@@ -15,6 +15,7 @@ import type { InsertDocumentDialogProps } from './insert-document-dialog';
 import InsertDocumentDialog from './insert-document-dialog';
 import type { BulkUpdateModalProps } from './bulk-update-modal';
 import BulkUpdateModal from './bulk-update-modal';
+import EditDocumentModal from './edit-document-modal';
 import type { DocumentListViewProps } from './document-list-view';
 import VirtualizedDocumentListView from './virtualized-document-list-view';
 import type { DocumentJsonViewProps } from './document-json-view';
@@ -651,6 +652,14 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
             updateBulkUpdatePreview={updateBulkUpdatePreview}
             runBulkUpdate={runBulkUpdate}
             saveUpdateQuery={onSaveUpdateQuery}
+          />
+          <EditDocumentModal
+            isOpen={store.state.editDocument.isOpen}
+            doc={store.state.editDocument.doc}
+            namespace={store.state.ns}
+            closeEditDocumentDialog={store.closeEditDocumentDialog.bind(store)}
+            replaceDocument={store.replaceDocument.bind(store)}
+            updateDocument={store.updateDocument.bind(store)}
           />
           <BulkDeleteModal
             open={store.state.bulkDelete.status === 'open'}
