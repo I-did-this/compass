@@ -1,5 +1,6 @@
 {
   "name": "mongodb-compass-monorepo",
+  "private": true,
   "description": "Monorepo that includes Compass and all its dependencies",
   "homepage": "https://www.mongodb.com/products/compass",
   "author": {
@@ -83,7 +84,8 @@
     "node-gyp": "^10.2.0",
     "react-leaflet": "^2.4.0",
     "react-leaflet-draw": "^0.19.0",
-    "reflux": "^0.4.1"
+    "reflux": "^0.4.1",
+    "zod-v4": "npm:zod@4.3.6"
   },
   "engines": {
     "node": ">=22.21.1",
@@ -124,5 +126,44 @@
     "qs": "^6.14.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2"
+  },
+  "resolutions": {
+    "@types/react": "^17.0.83",
+    "@types/react-dom": "^17.0.25",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "qs": "^6.14.1",
+    "@mongodb-js/eslint-config-devtools/@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@mongodb-js/eslint-config-devtools/@typescript-eslint/parser": "^8.58.0",
+    "@mongodb-js/eslint-config-devtools/eslint": "^8.57.1",
+    "@mongodb-js/eslint-config-devtools/eslint-plugin-jsx-a11y": "^6.10.2",
+    "@mongodb-js/eslint-config-devtools/eslint-plugin-react": "^7.37.5",
+    "@mongodb-js/eslint-config-devtools/eslint-plugin-react-hooks": "^7.0.1",
+    "@mongodb-js/diagramming/@leafygreen-ui/icon": "^14.8.0",
+    "@mongodb-js/diagramming/@leafygreen-ui/leafygreen-provider": "^5.0.4",
+    "@mongodb-js/diagramming/@leafygreen-ui/palette": "^5.0.2",
+    "@mongodb-js/diagramming/@leafygreen-ui/select": "^17.0.3",
+    "@mongodb-js/diagramming/@leafygreen-ui/tokens": "^4.2.2",
+    "@mongodb-js/diagramming/@leafygreen-ui/tooltip": "^14.3.1",
+    "@mongodb-js/diagramming/@leafygreen-ui/typography": "^22.2.4",
+    "braintrust/esbuild": "0.26.0",
+    "zod": "3.25.76",
+    "mongodb-mcp-server/zod": "4.3.6",
+    "@mongosh/arg-parser": "5.0.2",
+    "@mongosh/async-rewriter2": "2.4.15",
+    "@mongosh/autocomplete": "5.1.6",
+    "@mongosh/browser-repl": "5.3.4",
+    "@mongosh/browser-runtime-core": "5.3.4",
+    "@mongosh/errors": "2.4.6",
+    "@mongosh/history": "2.4.13",
+    "@mongosh/i18n": "2.20.2",
+    "@mongosh/logging": "5.0.3",
+    "@mongosh/node-runtime-worker-thread": "5.2.4",
+    "@mongosh/service-provider-core": "5.0.3",
+    "@mongosh/service-provider-node-driver": "5.0.8",
+    "@mongosh/shell-api": "5.1.6",
+    "@mongosh/shell-bson": "3.0.3",
+    "@mongosh/shell-evaluator": "5.1.6",
+    "@mongosh/types": "5.0.3"
   }
 }
