@@ -55,6 +55,7 @@
     "update-security-test-summary": "ts-node scripts/generate-security-test-summary.ts > docs/security-test-summary.md",
     "postupdate-security-test-summary": "npx prettier-compass docs/security-test-summary.md --write",
     "prepare": "husky install",
+    "postinstall": "node scripts/ensure-mcp-server-zod-v4.js",
     "snyk-test": "node scripts/snyk-test.js",
     "pregenerate-vulnerability-report": "npm run compile -w packages/compass && npm run snyk-test",
     "generate-vulnerability-report": "mongodb-sbom-tools generate-vulnerability-report --snyk-reports=.sbom/snyk-test-result.json --dependencies=.sbom/dependencies.json --fail-on=high > .sbom/vulnerability-report.md",

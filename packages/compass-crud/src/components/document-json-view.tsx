@@ -34,6 +34,7 @@ export type DocumentJsonViewProps = {
   | 'replaceDocument'
   | 'updateDocument'
   | 'openInsertDocumentDialog'
+  | 'openEditDocumentDialog'
 >;
 
 const keylineCardCSS = css({
@@ -67,6 +68,7 @@ class DocumentJsonView extends React.Component<DocumentJsonViewProps> {
               replaceDocument={this.props.replaceDocument}
               updateDocument={this.props.updateDocument}
               openInsertDocumentDialog={this.props.openInsertDocumentDialog}
+              openEditDocumentDialog={this.props.openEditDocumentDialog}
             />
           </KeylineCard>
         </li>
