@@ -131,11 +131,30 @@ module.exports = (_env, args) => {
         ),
       ];
 
+  // mongodb-mcp-server requires zod v4 (it calls v4-only APIs such as
+  // z.string().ipv4()), but the rest of the app is pinned to zod v3 via the
+  // resolutions block in the root package.json (compass-generative-ai and the
+  // `ai` SDK need v3, and no single version satisfies both ^3 and ^4). Yarn
+  // Classic's global `zod` resolution overrides the scoped one, so without this
+  // mcp-server loads v3 and crashes at runtime (`z.string().ipv4 is not a
+  // function`). Redirect only mongodb-mcp-server's `zod` imports to the
+  // dedicated v4 copy installed as the `zod-v4` alias dependency.
+  const mcpServerZodV4Rule = {
+    test: /\.(c|m)?js$/,
+    include: /node_modules[\\/]mongodb-mcp-server[\\/]/,
+    resolve: {
+      alias: {
+        zod: path.dirname(require.resolve('zod-v4/package.json')),
+      },
+    },
+  };
+
   return [
     merge(mainConfig, {
       cache,
       snapshot,
       externals,
+      module: { rules: [mcpServerZodV4Rule] },
       plugins: [
         new webpack.EnvironmentPlugin(hadronEnvConfig),
         // In local dev mode, this flag is used to disable web security when
@@ -156,9 +175,17 @@ module.exports = (_env, args) => {
       // amount of dependencies is massive and can benefit from them more
       optimization,
       externals,
+      module: { rules: [mcpServerZodV4Rule] },
       resolve: {
         alias: {
           '@mongodb-js/atlas-local': false,
+          // react-leaflet-draw@0.19 has an undeclared dependency on
+          // @react-leaflet/core (it was published for react-leaflet v3 while
+          // this repo pins v2), so the package is absent from the tree. Stub it
+          // to an empty module: the only consumer is the geo-coordinates schema
+          // minichart, which is already non-functional under v2, and this keeps
+          // the rest of the bundle building cleanly.
+          '@react-leaflet/core': false,
         },
       },
       plugins: [
