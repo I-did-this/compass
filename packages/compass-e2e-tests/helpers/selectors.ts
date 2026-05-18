@@ -647,6 +647,8 @@ export const EditDocumentModalFindInput =
 export const EditDocumentModalFindCounter =
   '[data-testid="edit-document-find-counter"]';
 export const EditDocumentModalCopyButton = `${EditDocumentModal} [data-testid="editor-action-Copy"]`;
+export const EditDocumentModalEditorContainer =
+  '[data-testid="edit-document-editor-container"]';
 export const DocumentTableContainer = `.document-table-view-container`;
 
 // Insert Document modal
