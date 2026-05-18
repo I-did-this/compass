@@ -54,7 +54,11 @@ const toolbarGroupStyles = css({
 
 const editorContainerStyles = css({
   flex: 1,
-  minHeight: spacing[1600] * 3,
+  // minHeight:0 lets this flex child shrink within the bounded body and own
+  // the scroll, instead of a tall min-height forcing the modal to grow (which
+  // left empty space below the editor). Combined with the definite modal
+  // height below, the editor fills all the way down to the footer.
+  minHeight: 0,
   overflow: 'auto',
 });
 
@@ -78,6 +82,70 @@ const jsonEditorDarkStyles = css({
 
 const treeEditorStyles = css({
   padding: spacing[200],
+});
+
+// ModalBody is the scroll container, so the toolbar and find bar (which live
+// inside it, above the editor) would scroll away with the document. Pin them
+// to the top, and pin the actions footer to the bottom, so they stay put
+// while only the editor content scrolls underneath. An opaque background is
+// required so the scrolling JSON does not show through.
+const stickyHeaderStyles = css({
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: spacing[200],
+  paddingBottom: spacing[200],
+  backgroundColor: palette.white,
+});
+
+const stickyFooterStyles = css({
+  position: 'sticky',
+  bottom: 0,
+  zIndex: 2,
+  paddingTop: spacing[200],
+  backgroundColor: palette.white,
+});
+
+const stickyDarkStyles = css({
+  backgroundColor: palette.black,
+});
+
+// The underlying LeafyGreen modal is height:auto, so the editor can't fill
+// the available space (leaving empty space below it) and the footer floats
+// mid-modal. A height:100% chain is fragile through LG's internal wrappers,
+// so instead pin a definite height on the dialog and turn it into a flex
+// column whose content wrapper grows. LG renders:
+//   <dialog className={ours}> <Body as="div"> {ModalHeader}{ModalBody} </Body>
+//   <CloseButton/> <portalDiv/> </dialog>
+// so the first child div is the Body wrapper we need to flex-grow. Applied
+// via the passed-through className so only this modal is affected (the shared
+// full-screen styles are reused by other modals).
+const modalContentStyles = css({
+  height: `calc(100vh - 2 * ${spacing[600]}px)`,
+  display: 'flex',
+  flexDirection: 'column',
+  '& > div:first-of-type': {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+});
+
+// ModalBody is a flex sibling of ModalHeader inside the Body wrapper; grow it
+// to fill the remaining height and lay its child out as a flex column so the
+// editor's flex:1 has a definite height to expand into. ModalBody's own
+// contentStyle hard-caps its height (maxHeight: calc(100vh - spacing[1600]*5),
+// ~100vh-320px) which is shorter than our dialog and leaves a dead band below
+// the footer; override it so flex:1 can actually fill the dialog.
+const modalBodyStyles = css({
+  flex: 1,
+  minHeight: 0,
+  maxHeight: 'none',
+  display: 'flex',
+  flexDirection: 'column',
 });
 
 const noop = () => {
@@ -272,70 +340,79 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
       open={isOpen}
       setOpen={onSetOpen}
       fullScreen={isFullScreen}
+      className={modalContentStyles}
       data-testid="edit-document-modal"
     >
       <ModalHeader title="Edit Document" subtitle={namespace} />
-      <ModalBody>
+      <ModalBody className={modalBodyStyles}>
         {doc && (
           <div className={bodyStyles}>
-            <div className={toolbarStyles}>
-              <div className={toolbarGroupStyles}>
-                <Label htmlFor="edit-document-validate">Document Editor</Label>
-                <Button
-                  id="edit-document-validate"
-                  size="small"
-                  onClick={onValidate}
-                  data-testid="edit-document-validate-button"
-                >
-                  Validate
-                </Button>
-              </div>
-              <div className={toolbarGroupStyles}>
-                <SegmentedControl
-                  label="Editor mode"
-                  size="small"
-                  value={mode}
-                  onChange={onModeChange}
-                  data-testid="edit-document-mode"
-                >
-                  <SegmentedControlOption
-                    value="JSON"
-                    aria-label="JSON editor"
-                    data-testid="edit-document-mode-json"
-                    glyph={<Icon glyph="CurlyBraces" />}
+            <div
+              className={cx(stickyHeaderStyles, darkMode && stickyDarkStyles)}
+            >
+              <div className={toolbarStyles}>
+                <div className={toolbarGroupStyles}>
+                  <Label htmlFor="edit-document-validate">
+                    Document Editor
+                  </Label>
+                  <Button
+                    id="edit-document-validate"
+                    size="small"
+                    onClick={onValidate}
+                    data-testid="edit-document-validate-button"
                   >
-                    JSON
-                  </SegmentedControlOption>
-                  <SegmentedControlOption
-                    value="Tree"
-                    aria-label="Tree editor"
-                    data-testid="edit-document-mode-tree"
-                    glyph={<Icon glyph="Menu" />}
+                    Validate
+                  </Button>
+                </div>
+                <div className={toolbarGroupStyles}>
+                  <SegmentedControl
+                    label="Editor mode"
+                    size="small"
+                    value={mode}
+                    onChange={onModeChange}
+                    data-testid="edit-document-mode"
                   >
-                    Tree
-                  </SegmentedControlOption>
-                </SegmentedControl>
-                <IconButton
-                  aria-label={
-                    isFullScreen ? 'Exit full screen' : 'Enter full screen'
-                  }
-                  onClick={() => setIsFullScreen((value) => !value)}
-                  data-testid="edit-document-fullscreen-toggle"
-                >
-                  <Icon
-                    glyph={isFullScreen ? 'FullScreenExit' : 'FullScreenEnter'}
-                  />
-                </IconButton>
+                    <SegmentedControlOption
+                      value="JSON"
+                      aria-label="JSON editor"
+                      data-testid="edit-document-mode-json"
+                      glyph={<Icon glyph="CurlyBraces" />}
+                    >
+                      JSON
+                    </SegmentedControlOption>
+                    <SegmentedControlOption
+                      value="Tree"
+                      aria-label="Tree editor"
+                      data-testid="edit-document-mode-tree"
+                      glyph={<Icon glyph="Menu" />}
+                    >
+                      Tree
+                    </SegmentedControlOption>
+                  </SegmentedControl>
+                  <IconButton
+                    aria-label={
+                      isFullScreen ? 'Exit full screen' : 'Enter full screen'
+                    }
+                    onClick={() => setIsFullScreen((value) => !value)}
+                    data-testid="edit-document-fullscreen-toggle"
+                  >
+                    <Icon
+                      glyph={
+                        isFullScreen ? 'FullScreenExit' : 'FullScreenEnter'
+                      }
+                    />
+                  </IconButton>
+                </div>
               </div>
-            </div>
 
-            {mode === 'JSON' && (
-              <EditDocumentFind
-                key={`find-${renderKey}`}
-                ref={findRef}
-                editorRef={editorRef}
-              />
-            )}
+              {mode === 'JSON' && (
+                <EditDocumentFind
+                  key={`find-${renderKey}`}
+                  ref={findRef}
+                  editorRef={editorRef}
+                />
+              )}
+            </div>
 
             <div className={editorContainerStyles}>
               {mode === 'JSON' ? (
@@ -346,7 +423,7 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
                   language="json"
                   text={jsonText}
                   onChangeText={onChangeJson}
-                  copyable={false}
+                  copyable
                   formattable={false}
                   showLineNumbers
                   minLines={10}
@@ -366,23 +443,29 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
               )}
             </div>
 
-            <DocumentList.DocumentEditActionsFooter
-              doc={doc}
-              editing
-              deleting={false}
-              alwaysForceUpdate={mode === 'JSON'}
-              modified={mode === 'JSON' ? jsonText !== initialJson : undefined}
-              validationError={mode === 'JSON' ? validationError : null}
-              onUpdate={(force: boolean) => {
-                if (mode === 'JSON') {
-                  onUpdateJson();
-                } else {
-                  onUpdateTree(force);
+            <div
+              className={cx(stickyFooterStyles, darkMode && stickyDarkStyles)}
+            >
+              <DocumentList.DocumentEditActionsFooter
+                doc={doc}
+                editing
+                deleting={false}
+                alwaysForceUpdate={mode === 'JSON'}
+                modified={
+                  mode === 'JSON' ? jsonText !== initialJson : undefined
                 }
-              }}
-              onDelete={noop}
-              onCancel={handleCancel}
-            />
+                validationError={mode === 'JSON' ? validationError : null}
+                onUpdate={(force: boolean) => {
+                  if (mode === 'JSON') {
+                    onUpdateJson();
+                  } else {
+                    onUpdateTree(force);
+                  }
+                }}
+                onDelete={noop}
+                onCancel={handleCancel}
+              />
+            </div>
           </div>
         )}
       </ModalBody>
