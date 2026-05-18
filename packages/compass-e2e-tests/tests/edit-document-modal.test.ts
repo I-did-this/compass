@@ -122,8 +122,32 @@ describe('Edit Document modal', function () {
     // below the viewport).
     await browser.$(Selectors.EditDocumentModalCancelButton).waitForDisplayed();
     await browser.$(Selectors.EditDocumentModalUpdateButton).waitForDisplayed();
-    // Copy is re-enabled on the JSON editor.
+    // Copy is re-enabled on the JSON editor. The editor's action buttons are
+    // display:none until the editor is hovered/focused (by design), so hover
+    // it first, then assert the Copy action is available.
+    await browser.hover(Selectors.EditDocumentModalJSONEditor);
     await browser.$(Selectors.EditDocumentModalCopyButton).waitForDisplayed();
+
+    await browser.clickVisible(Selectors.EditDocumentModalCancelButton);
+    await browser
+      .$(Selectors.EditDocumentModal)
+      .waitForDisplayed({ reverse: true });
+  });
+
+  it('expands the editor to fill the modal height', async function () {
+    await openEditModalFor(browser, '{ i: 10 }');
+    await browser.$(Selectors.EditDocumentModalJSONEditor).waitForDisplayed();
+
+    const modalSize = await browser.$(Selectors.EditDocumentModal).getSize();
+    const editorSize = await browser
+      .$(Selectors.EditDocumentModalEditorContainer)
+      .getSize();
+
+    // Regression guard: the editor must fill most of the modal. It used to be
+    // clamped ~270px short by ModalBody's maxHeight cap, leaving a dead band
+    // below the footer. The threshold is generous so it stays robust across
+    // window sizes while still failing if the editor collapses again.
+    expect(editorSize.height).to.be.greaterThan(modalSize.height * 0.6);
 
     await browser.clickVisible(Selectors.EditDocumentModalCancelButton);
     await browser

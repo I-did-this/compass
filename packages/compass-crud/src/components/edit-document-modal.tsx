@@ -414,7 +414,10 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
               )}
             </div>
 
-            <div className={editorContainerStyles}>
+            <div
+              className={editorContainerStyles}
+              data-testid="edit-document-editor-container"
+            >
               {mode === 'JSON' ? (
                 <CodemirrorMultilineEditor
                   key={`json-${renderKey}`}
