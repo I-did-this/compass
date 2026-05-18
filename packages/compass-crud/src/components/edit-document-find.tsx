@@ -135,6 +135,15 @@ const EditDocumentFind = forwardRef<EditDocumentFindRef, EditDocumentFindProps>(
           }
         } else if (event.key === 'Escape') {
           event.preventDefault();
+          // The surrounding LeafyGreen Modal closes on Escape via a native
+          // document-level keydown listener (see @leafygreen-ui/hooks
+          // useEscapeKey). Without stopping native propagation here, pressing
+          // Escape to dismiss the find bar would also close the whole Edit
+          // Document modal and discard the in-progress edit. A React-only
+          // stopPropagation is not enough against a document listener, so we
+          // stop the native event before it can bubble to document.
+          event.stopPropagation();
+          event.nativeEvent.stopImmediatePropagation();
           clear();
         }
       },

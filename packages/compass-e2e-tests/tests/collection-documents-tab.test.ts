@@ -430,22 +430,24 @@ FindIterable<Document> result = collection.find(filter);`);
       /^_id: ObjectId\('[a-f0-9]{24}'\) i: 31 j: 0$/
     );
 
-    const valueElement = document.$(
-      `${Selectors.HadronDocumentElement}:last-child ${Selectors.HadronDocumentClickableValue}`
+    // Editing now happens in the Edit Document modal rather than inline.
+    await browser.hover(Selectors.DocumentListEntry);
+    await browser.clickVisible(Selectors.EditDocumentButton);
+    await browser.$(Selectors.EditDocumentModal).waitForDisplayed();
+
+    const json = await browser.getCodemirrorEditorText(
+      Selectors.EditDocumentModalJSONEditor
     );
-    await valueElement.doubleClick();
-
-    const input = document.$(
-      `${Selectors.HadronDocumentElement}:last-child ${Selectors.HadronDocumentValueEditor}`
+    await browser.setCodemirrorEditorValue(
+      Selectors.EditDocumentModalJSONEditor,
+      JSON.stringify({ ...JSON.parse(json), j: 42 })
     );
-    await browser.setValueVisible(input, '42');
 
-    const footer = document.$(Selectors.DocumentFooterMessage);
-    expect(await footer.getText()).to.equal('Document modified.');
-
-    const button = document.$(Selectors.UpdateDocumentButton);
-    await button.click();
-    await footer.waitForDisplayed({ reverse: true });
+    await browser.clickVisible(Selectors.EditDocumentModalUpdateButton);
+    // A successful save closes the modal.
+    await browser
+      .$(Selectors.EditDocumentModal)
+      .waitForDisplayed({ reverse: true });
 
     await browser.runFindOperation('Documents', '{ i: 31 }');
     const modifiedDocument = browser.$(Selectors.DocumentListEntry);
@@ -471,22 +473,23 @@ FindIterable<Document> result = collection.find(filter);`);
       /^\{ "_id": \{ "\$oid": "[a-f0-9]{24}" \}, "i": 32, "j": 0 \}$/
     );
 
+    // The JSON view edit button now opens the Edit Document modal.
     await browser.hover(Selectors.JSONDocumentCard);
     await browser.clickVisible(Selectors.JSONEditDocumentButton);
+    await browser.$(Selectors.EditDocumentModal).waitForDisplayed();
 
-    const newjson = JSON.stringify({ ...JSON.parse(json), j: 1234 });
-
+    const modalJson = await browser.getCodemirrorEditorText(
+      Selectors.EditDocumentModalJSONEditor
+    );
     await browser.setCodemirrorEditorValue(
-      Selectors.DocumentJSONEntry,
-      newjson
+      Selectors.EditDocumentModalJSONEditor,
+      JSON.stringify({ ...JSON.parse(modalJson), j: 1234 })
     );
 
-    const footer = document.$(Selectors.DocumentFooterMessage);
-    expect(await footer.getText()).to.equal('Document modified.');
-
-    const button = document.$(Selectors.UpdateDocumentButton);
-    await button.click();
-    await footer.waitForDisplayed({ reverse: true });
+    await browser.clickVisible(Selectors.EditDocumentModalUpdateButton);
+    await browser
+      .$(Selectors.EditDocumentModal)
+      .waitForDisplayed({ reverse: true });
 
     await browser.runFindOperation('Documents', '{ i: 32 }');
     await browser.clickVisible(Selectors.SelectJSONView);
@@ -521,25 +524,26 @@ FindIterable<Document> result = collection.find(filter);`);
       /^\{ "_id": \{ "\$oid": "[a-f0-9]{24}" \}, "i": 123, "j": 0 \}$/
     );
 
+    // The JSON view edit button now opens the Edit Document modal.
     await browser.hover(Selectors.JSONDocumentCard);
     await browser.clickVisible(Selectors.JSONEditDocumentButton);
+    await browser.$(Selectors.EditDocumentModal).waitForDisplayed();
 
-    const newjson = JSON.stringify({
-      ...JSON.parse(json),
-      j: { $numberLong: '12345' },
-    });
-
+    const modalJson = await browser.getCodemirrorEditorText(
+      Selectors.EditDocumentModalJSONEditor
+    );
     await browser.setCodemirrorEditorValue(
-      Selectors.DocumentJSONEntry,
-      newjson
+      Selectors.EditDocumentModalJSONEditor,
+      JSON.stringify({
+        ...JSON.parse(modalJson),
+        j: { $numberLong: '12345' },
+      })
     );
 
-    const footer = document.$(Selectors.DocumentFooterMessage);
-    expect(await footer.getText()).to.equal('Document modified.');
-
-    const button = document.$(Selectors.UpdateDocumentButton);
-    await button.click();
-    await footer.waitForDisplayed({ reverse: true });
+    await browser.clickVisible(Selectors.EditDocumentModalUpdateButton);
+    await browser
+      .$(Selectors.EditDocumentModal)
+      .waitForDisplayed({ reverse: true });
 
     await browser.runFindOperation('Documents', '{ i: 123 }');
     await browser.clickVisible(Selectors.SelectJSONView);
@@ -797,26 +801,28 @@ FindIterable<Document> result = collection.find(filter);`);
         const document = browser.$(Selectors.DocumentListEntry);
         await document.waitForDisplayed();
 
-        // enter edit mode
+        // Editing now happens in the Edit Document modal rather than inline.
         await browser.hover(Selectors.DocumentListEntry);
         await browser.clickVisible(Selectors.EditDocumentButton);
+        await browser.$(Selectors.EditDocumentModal).waitForDisplayed();
 
-        // rename the required field
-        const input = document.$(
-          `${Selectors.HadronDocumentElement}:last-child ${Selectors.HadronDocumentKeyEditor}`
+        // rename the required field so the document fails server validation
+        const json = await browser.getCodemirrorEditorText(
+          Selectors.EditDocumentModalJSONEditor
         );
-        await browser.setValueVisible(input, 'somethingElse');
+        const parsed = JSON.parse(json);
+        await browser.setCodemirrorEditorValue(
+          Selectors.EditDocumentModalJSONEditor,
+          JSON.stringify({ _id: parsed._id, somethingElse: parsed.phone })
+        );
 
-        // confirm update
-        const footer = document.$(Selectors.DocumentFooterMessage);
-        expect(await footer.getText()).to.equal('Document modified.');
+        await browser.clickVisible(Selectors.EditDocumentModalUpdateButton);
 
-        const button = document.$(Selectors.UpdateDocumentButton);
-        await button.click();
-
-        const errorMessage = browser.$(Selectors.DocumentFooterMessage);
+        // The modal stays open on a failed save and surfaces the error.
+        const errorMessage = browser.$(
+          Selectors.EditDocumentModalFooterMessage
+        );
         await errorMessage.waitForDisplayed();
-
         await browser.waitUntil(async () => {
           return (await errorMessage.getText()).includes(
             'Document failed validation'
@@ -837,6 +843,12 @@ FindIterable<Document> result = collection.find(filter);`);
         await browser.$(Selectors.ErrorDetailsJson).waitForDisplayed({
           reverse: true,
         });
+
+        // close the modal to end the editing session
+        await browser.clickVisible(Selectors.EditDocumentModalCancelButton);
+        await browser
+          .$(Selectors.EditDocumentModal)
+          .waitForDisplayed({ reverse: true });
       });
 
       it('shows error info when editing via json view', async function () {
@@ -847,26 +859,24 @@ FindIterable<Document> result = collection.find(filter);`);
 
         await waitForJSON(browser, document);
 
-        // enter edit mode
+        // The JSON view edit button now opens the Edit Document modal.
         await browser.hover(Selectors.JSONDocumentCard);
         await browser.clickVisible(Selectors.JSONEditDocumentButton);
+        await browser.$(Selectors.EditDocumentModal).waitForDisplayed();
 
-        // remove the required field
+        // remove the required field so the document fails server validation
         await browser.setCodemirrorEditorValue(
-          Selectors.DocumentJSONEntry,
+          Selectors.EditDocumentModalJSONEditor,
           `{}`
         );
 
-        // confirm update
-        const footer = document.$(Selectors.DocumentFooterMessage);
-        expect(await footer.getText()).to.equal('Document modified.');
+        await browser.clickVisible(Selectors.EditDocumentModalUpdateButton);
 
-        const button = document.$(Selectors.UpdateDocumentButton);
-        await button.click();
-
-        const errorMessage = browser.$(Selectors.DocumentFooterMessage);
+        // The modal stays open on a failed save and surfaces the error.
+        const errorMessage = browser.$(
+          Selectors.EditDocumentModalFooterMessage
+        );
         await errorMessage.waitForDisplayed();
-
         await browser.waitUntil(async () => {
           return (await errorMessage.getText()).includes(
             'Document failed validation'
@@ -887,6 +897,12 @@ FindIterable<Document> result = collection.find(filter);`);
         await browser.$(Selectors.ErrorDetailsJson).waitForDisplayed({
           reverse: true,
         });
+
+        // close the modal to end the editing session
+        await browser.clickVisible(Selectors.EditDocumentModalCancelButton);
+        await browser
+          .$(Selectors.EditDocumentModal)
+          .waitForDisplayed({ reverse: true });
       });
 
       it('shows error info when editing via table view', async function () {
