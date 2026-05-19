@@ -4,6 +4,7 @@ import {
   cx,
   spacing,
   palette,
+  codePalette,
   Label,
   Button,
   Icon,
@@ -60,24 +61,24 @@ const editorContainerStyles = css({
   // height below, the editor fills all the way down to the footer.
   minHeight: 0,
   overflow: 'auto',
+  // Present the document inside a card: a bordered, rounded container. The
+  // border-radius + overflow clip the scrolling editor content. The card
+  // background must match the editor's forced background (see jsonEditor
+  // styles below) so the card reads as a single solid colour instead of a
+  // two-tone area where the editor doesn't reach (notably in dark mode,
+  // where the editor is pure black but the modal is dark grey).
+  border: `1px solid ${palette.gray.light2}`,
+  borderRadius: spacing[200],
+  // Match the editor's own default background (codePalette) so the card is a
+  // single solid colour. The modal previously force-overrode the editor to
+  // pure white/black, which looked wrong; let the editor use its standard
+  // theme background and align the card to it.
+  backgroundColor: codePalette.light[0],
 });
 
-const jsonEditorStyles = css({
-  '& .cm-editor': {
-    backgroundColor: `${palette.white} !important`,
-  },
-  '& .cm-gutters': {
-    backgroundColor: `${palette.white} !important`,
-  },
-});
-
-const jsonEditorDarkStyles = css({
-  '& .cm-editor': {
-    backgroundColor: `${palette.black} !important`,
-  },
-  '& .cm-gutters': {
-    backgroundColor: `${palette.black} !important`,
-  },
+const editorContainerDarkStyles = css({
+  border: `1px solid ${palette.gray.dark2}`,
+  backgroundColor: codePalette.dark[0],
 });
 
 const treeEditorStyles = css({
@@ -415,7 +416,10 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
             </div>
 
             <div
-              className={editorContainerStyles}
+              className={cx(
+                editorContainerStyles,
+                darkMode && editorContainerDarkStyles
+              )}
               data-testid="edit-document-editor-container"
             >
               {mode === 'JSON' ? (
@@ -427,14 +431,10 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
                   text={jsonText}
                   onChangeText={onChangeJson}
                   copyable
-                  formattable={false}
+                  formattable
                   showLineNumbers
                   minLines={10}
                   completer={completer}
-                  className={cx(
-                    jsonEditorStyles,
-                    darkMode && jsonEditorDarkStyles
-                  )}
                 />
               ) : (
                 <div
