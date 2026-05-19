@@ -4,11 +4,11 @@ import {
   cx,
   spacing,
   palette,
-  codePalette,
   Label,
   Button,
   Icon,
   IconButton,
+  KeylineCard,
   SegmentedControl,
   SegmentedControlOption,
   Modal,
@@ -16,6 +16,7 @@ import {
   ModalBody,
   DocumentList,
   useDarkMode,
+  useId,
 } from '@mongodb-js/compass-components';
 import type { Document } from 'hadron-document';
 import HadronDocument from 'hadron-document';
@@ -53,33 +54,25 @@ const toolbarGroupStyles = css({
   gap: spacing[200],
 });
 
-const editorContainerStyles = css({
+// The document is presented inside a KeylineCard (the standard Compass card
+// primitive, same as the bulk-update modal's editor). These styles only add
+// the fill/scroll behaviour: minHeight:0 lets this flex child shrink within
+// the bounded body and own the scroll instead of a tall min-height forcing
+// the modal to grow; combined with the definite modal height it fills all
+// the way down to the footer.
+const editorCardStyles = css({
   flex: 1,
-  // minHeight:0 lets this flex child shrink within the bounded body and own
-  // the scroll, instead of a tall min-height forcing the modal to grow (which
-  // left empty space below the editor). Combined with the definite modal
-  // height below, the editor fills all the way down to the footer.
   minHeight: 0,
   overflow: 'auto',
-  // Present the document inside a card: a bordered, rounded container. The
-  // border-radius + overflow clip the scrolling editor content. The card
-  // background must match the editor's forced background (see jsonEditor
-  // styles below) so the card reads as a single solid colour instead of a
-  // two-tone area where the editor doesn't reach (notably in dark mode,
-  // where the editor is pure black but the modal is dark grey).
-  border: `1px solid ${palette.gray.light2}`,
-  borderRadius: spacing[200],
-  // Match the editor's own default background (codePalette) so the card is a
-  // single solid colour. The modal previously force-overrode the editor to
-  // pure white/black, which looked wrong; let the editor use its standard
-  // theme background and align the card to it.
-  backgroundColor: codePalette.light[0],
 });
 
-const editorContainerDarkStyles = css({
-  border: `1px solid ${palette.gray.dark2}`,
-  backgroundColor: codePalette.dark[0],
+// Match the bulk-update editor card: light grey in light mode, KeylineCard's
+// own default in dark mode.
+const editorCardLightStyles = css({
+  backgroundColor: palette.gray.light3,
 });
+
+const editorCardDarkStyles = css({});
 
 const treeEditorStyles = css({
   padding: spacing[200],
@@ -173,6 +166,7 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
   const darkMode = useDarkMode();
   const editorRef = useRef<EditorRef>(null);
   const findRef = useRef<EditDocumentFindRef>(null);
+  const editorId = useId();
 
   const [mode, setMode] = useState<EditMode>('JSON');
   const [jsonText, setJsonText] = useState('');
@@ -353,11 +347,8 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
             >
               <div className={toolbarStyles}>
                 <div className={toolbarGroupStyles}>
-                  <Label htmlFor="edit-document-validate">
-                    Document Editor
-                  </Label>
+                  <Label htmlFor={editorId}>Document Editor</Label>
                   <Button
-                    id="edit-document-validate"
                     size="small"
                     onClick={onValidate}
                     data-testid="edit-document-validate-button"
@@ -415,10 +406,10 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
               )}
             </div>
 
-            <div
+            <KeylineCard
               className={cx(
-                editorContainerStyles,
-                darkMode && editorContainerDarkStyles
+                editorCardStyles,
+                darkMode ? editorCardDarkStyles : editorCardLightStyles
               )}
               data-testid="edit-document-editor-container"
             >
@@ -426,6 +417,7 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
                 <CodemirrorMultilineEditor
                   key={`json-${renderKey}`}
                   ref={editorRef}
+                  id={editorId}
                   data-testid="edit-document-json-editor"
                   language="json"
                   text={jsonText}
@@ -444,7 +436,7 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
                   <DocumentList.Document value={doc} editable editing />
                 </div>
               )}
-            </div>
+            </KeylineCard>
 
             <div
               className={cx(stickyFooterStyles, darkMode && stickyDarkStyles)}
