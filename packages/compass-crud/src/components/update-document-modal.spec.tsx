@@ -80,14 +80,15 @@ describe('UpdateDocumentModal', function () {
     });
   });
 
-  it('clears the error when Validate is run against a valid document', async function () {
+  it('continuously clears the error once the JSON becomes valid', async function () {
     renderModal();
     const editor = await screen.findByTestId('update-document-json-editor');
     await setCodemirrorEditorValue(editor, '{ "name": } ');
     expect(await screen.findByText(/unexpected token/i)).to.exist;
 
+    // Validation is continuous (the Validate button was removed); correcting
+    // the JSON clears the error on its own, no explicit action needed.
     await setCodemirrorEditorValue(editor, '{ "name": "valid" }');
-    userEvent.click(screen.getByTestId('update-document-validate-button'));
 
     await waitFor(() => {
       expect(screen.queryByText(/unexpected token/i)).to.not.exist;
@@ -172,7 +173,7 @@ describe('UpdateDocumentModal', function () {
     await screen.findByTestId('update-document-json-editor');
     expect(isDisabled(screen.getByTestId('update-document-find-next'))).to.be
       .true;
-    expect(isDisabled(screen.getByTestId('update-document-find-previous'))).to.be
-      .true;
+    expect(isDisabled(screen.getByTestId('update-document-find-previous'))).to
+      .be.true;
   });
 });
