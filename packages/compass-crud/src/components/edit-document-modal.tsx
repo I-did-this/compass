@@ -5,7 +5,6 @@ import {
   spacing,
   palette,
   Label,
-  Button,
   Icon,
   IconButton,
   KeylineCard,
@@ -211,15 +210,6 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
     }
   }, []);
 
-  const onValidate = useCallback(() => {
-    try {
-      HadronDocument.FromEJSON(jsonText || '');
-      setValidationError(null);
-    } catch (error) {
-      setValidationError(error as Error);
-    }
-  }, [jsonText]);
-
   const onModeChange = useCallback(
     (next: string) => {
       const nextMode = next as EditMode;
@@ -348,13 +338,6 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
               <div className={toolbarStyles}>
                 <div className={toolbarGroupStyles}>
                   <Label htmlFor={editorId}>Document Editor</Label>
-                  <Button
-                    size="small"
-                    onClick={onValidate}
-                    data-testid="edit-document-validate-button"
-                  >
-                    Validate
-                  </Button>
                 </div>
                 <div className={toolbarGroupStyles}>
                   <SegmentedControl
