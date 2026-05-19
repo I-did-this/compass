@@ -24,7 +24,7 @@ export type DocumentJsonViewItemProps = {
   | 'replaceDocument'
   | 'updateDocument'
   | 'openInsertDocumentDialog'
-  | 'openEditDocumentDialog'
+  | 'openUpdateDocumentModal'
 >;
 
 const DocumentJsonViewItem: React.FC<DocumentJsonViewItemProps> = ({
@@ -40,14 +40,14 @@ const DocumentJsonViewItem: React.FC<DocumentJsonViewItemProps> = ({
   replaceDocument,
   updateDocument,
   openInsertDocumentDialog,
-  openEditDocumentDialog,
+  openUpdateDocumentModal,
 }) => {
   const contextMenuRef = useDocumentItemContextMenu({
     doc,
     isEditable,
     copyToClipboard,
     openInsertDocumentDialog,
-    openEditDocumentDialog,
+    openUpdateDocumentModal,
   });
 
   const mergedRef = useMergeRefs([docRef, contextMenuRef]);
@@ -66,7 +66,7 @@ const DocumentJsonViewItem: React.FC<DocumentJsonViewItemProps> = ({
         replaceDocument={replaceDocument}
         updateDocument={updateDocument}
         openInsertDocumentDialog={openInsertDocumentDialog}
-        openEditDocumentDialog={openEditDocumentDialog}
+        openUpdateDocumentModal={openUpdateDocumentModal}
       />
     </KeylineCard>
   );

@@ -94,8 +94,8 @@ export type CrudActions = {
   updateDocument(doc: Document): Promise<void>;
   removeDocument(doc: Document): Promise<void>;
   replaceDocument(doc: Document): Promise<void>;
-  openEditDocumentDialog(doc: Document): void;
-  closeEditDocumentDialog(): void;
+  openUpdateDocumentModal(doc: Document): void;
+  closeUpdateDocumentModal(): void;
   openInsertDocumentDialog(doc: BSONObject, cloned: boolean): Promise<void>;
   copyToClipboard(doc: Document): void; //XXX
   openBulkDeleteDialog(): void;
@@ -331,7 +331,7 @@ export type BulkDeleteState = {
   affected?: number;
 };
 
-export type EditDocumentState = {
+export type UpdateDocumentModalState = {
   isOpen: boolean;
   doc: Document | null;
 };
@@ -366,7 +366,7 @@ type CrudState = {
   isSearchIndexesSupported: boolean;
   isUpdatePreviewSupported: boolean;
   bulkDelete: BulkDeleteState;
-  editDocument: EditDocumentState;
+  updateDocumentModal: UpdateDocumentModalState;
   docsPerPage: number;
   collectionStats: CollectionStats | null;
 };
@@ -458,7 +458,7 @@ class CrudStoreImpl
       insert: this.getInitialInsertState(),
       bulkUpdate: this.getInitialBulkUpdateState(),
       bulkDelete: this.getInitialBulkDeleteState(),
-      editDocument: { isOpen: false, doc: null },
+      updateDocumentModal: { isOpen: false, doc: null },
       table: this.getInitialTableState(),
       isDataLake,
       isReadonly,
@@ -988,32 +988,32 @@ class CrudStoreImpl
   }
 
   /**
-   * Open the Edit Document modal for the given document. Opening begins an
+   * Open the Update Document modal for the given document. Opening begins an
    * editing session on the document so the tree editor can track element-level
    * changes and the document can be reverted on cancel.
    *
    * @param {Document} doc - The hadron document to edit.
    */
-  openEditDocumentDialog(doc: Document) {
+  openUpdateDocumentModal(doc: Document) {
     doc.startEditing();
     this.setState({
-      editDocument: { isOpen: true, doc },
+      updateDocumentModal: { isOpen: true, doc },
     });
   }
 
   /**
-   * Close the Edit Document modal. This discards any in-progress edits and
+   * Close the Update Document modal. This discards any in-progress edits and
    * ends the editing session so the document is not left in a partially
    * edited state, regardless of how the modal was closed.
    */
-  closeEditDocumentDialog() {
-    const { doc } = this.state.editDocument;
+  closeUpdateDocumentModal() {
+    const { doc } = this.state.updateDocumentModal;
     if (doc) {
       doc.cancel();
       doc.finishEditing();
     }
     this.setState({
-      editDocument: { isOpen: false, doc: null },
+      updateDocumentModal: { isOpen: false, doc: null },
     });
   }
 
@@ -1897,8 +1897,8 @@ class CrudStoreImpl
     // If the documents were refreshed while a document was open for editing,
     // the edited document no longer corresponds to what is in the list, so the
     // edit state stands down rather than leaving it inconsistent.
-    if (this.state.editDocument.isOpen) {
-      this.closeEditDocumentDialog();
+    if (this.state.updateDocumentModal.isOpen) {
+      this.closeUpdateDocumentModal();
     }
   }
 

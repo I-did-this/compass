@@ -58,7 +58,7 @@ type VirtualizedDocumentListViewProps = {
   | 'replaceDocument'
   | 'updateDocument'
   | 'openInsertDocumentDialog'
-  | 'openEditDocumentDialog'
+  | 'openUpdateDocumentModal'
 >;
 
 const VirtualizedDocumentListView: React.FC<
@@ -75,7 +75,7 @@ const VirtualizedDocumentListView: React.FC<
   replaceDocument,
   updateDocument,
   openInsertDocumentDialog,
-  openEditDocumentDialog,
+  openUpdateDocumentModal,
   listRef,
   __TEST_OVERSCAN_COUNT,
   __TEST_LIST_HEIGHT,
@@ -110,7 +110,7 @@ const VirtualizedDocumentListView: React.FC<
           replaceDocument={replaceDocument}
           updateDocument={updateDocument}
           openInsertDocumentDialog={openInsertDocumentDialog}
-          openEditDocumentDialog={openEditDocumentDialog}
+          openUpdateDocumentModal={openUpdateDocumentModal}
         />
       );
     },
@@ -120,7 +120,7 @@ const VirtualizedDocumentListView: React.FC<
       scrollTriggerRef,
       copyToClipboard,
       openInsertDocumentDialog,
-      openEditDocumentDialog,
+      openUpdateDocumentModal,
       removeDocument,
       replaceDocument,
       updateDocument,

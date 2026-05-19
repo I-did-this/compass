@@ -44,12 +44,12 @@ const counterDarkStyles = css({
 
 const EMPTY_RESULT: EditorSearchResult = { count: 0, current: 0 };
 
-export type EditDocumentFindRef = {
+export type UpdateDocumentFindRef = {
   /** Focuses and selects the find input (used for the Ctrl/Cmd+F shortcut). */
   focus: () => void;
 };
 
-export type EditDocumentFindProps = {
+export type UpdateDocumentFindProps = {
   editorRef: React.RefObject<EditorRef>;
 };
 
@@ -71,8 +71,8 @@ function formatCounter(term: string, result: EditorSearchResult): string {
  * the standard find shortcuts: Enter/Shift+Enter to navigate matches and
  * Escape to clear and blur.
  */
-const EditDocumentFind = forwardRef<EditDocumentFindRef, EditDocumentFindProps>(
-  function EditDocumentFind({ editorRef }, ref) {
+const UpdateDocumentFind = forwardRef<UpdateDocumentFindRef, UpdateDocumentFindProps>(
+  function UpdateDocumentFind({ editorRef }, ref) {
     const darkMode = useDarkMode();
     const inputRef = useRef<HTMLInputElement>(null);
     const [term, setTerm] = useState('');
@@ -153,7 +153,7 @@ const EditDocumentFind = forwardRef<EditDocumentFindRef, EditDocumentFindProps>(
     const hasMatches = result.count > 0;
 
     return (
-      <div className={containerStyles} data-testid="edit-document-find">
+      <div className={containerStyles} data-testid="update-document-find">
         <TextInput
           ref={inputRef}
           className={inputStyles}
@@ -163,7 +163,7 @@ const EditDocumentFind = forwardRef<EditDocumentFindRef, EditDocumentFindProps>(
           value={term}
           onChange={onChange}
           onKeyDown={onKeyDown}
-          data-testid="edit-document-find-input"
+          data-testid="update-document-find-input"
         />
         <span
           className={
@@ -171,7 +171,7 @@ const EditDocumentFind = forwardRef<EditDocumentFindRef, EditDocumentFindProps>(
               ? `${counterStyles} ${counterDarkStyles}`
               : `${counterStyles} ${counterLightStyles}`
           }
-          data-testid="edit-document-find-counter"
+          data-testid="update-document-find-counter"
         >
           {formatCounter(term, result)}
         </span>
@@ -179,7 +179,7 @@ const EditDocumentFind = forwardRef<EditDocumentFindRef, EditDocumentFindProps>(
           aria-label="Previous match"
           disabled={!hasMatches}
           onClick={goPrevious}
-          data-testid="edit-document-find-previous"
+          data-testid="update-document-find-previous"
         >
           <Icon glyph="ChevronUp" />
         </IconButton>
@@ -187,7 +187,7 @@ const EditDocumentFind = forwardRef<EditDocumentFindRef, EditDocumentFindProps>(
           aria-label="Next match"
           disabled={!hasMatches}
           onClick={goNext}
-          data-testid="edit-document-find-next"
+          data-testid="update-document-find-next"
         >
           <Icon glyph="ChevronDown" />
         </IconButton>
@@ -196,4 +196,4 @@ const EditDocumentFind = forwardRef<EditDocumentFindRef, EditDocumentFindProps>(
   }
 );
 
-export default EditDocumentFind;
+export default UpdateDocumentFind;

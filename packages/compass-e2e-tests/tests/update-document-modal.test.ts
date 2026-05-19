@@ -13,7 +13,7 @@ import { createNumbersCollection } from '../helpers/mongo-clients.ts';
 const { expect } = chai;
 
 /**
- * End-to-end coverage for the Edit Document modal that replaced the old
+ * End-to-end coverage for the Update Document modal that replaced the old
  * inline document-editing flow (commit a3ffa4aed). Each test seeds the
  * `test.numbers` collection ({ i, j: 0 }), opens the modal from the list
  * view, exercises one capability, and verifies the effect.
@@ -35,14 +35,14 @@ async function openEditModalFor(browser: CompassBrowser, query: string) {
     await editButton.click();
     return true;
   });
-  await browser.$(Selectors.EditDocumentModal).waitForDisplayed();
+  await browser.$(Selectors.UpdateDocumentModal).waitForDisplayed();
 }
 
 async function readModalJson(browser: CompassBrowser): Promise<string> {
-  return browser.getCodemirrorEditorText(Selectors.EditDocumentModalJSONEditor);
+  return browser.getCodemirrorEditorText(Selectors.UpdateDocumentModalJSONEditor);
 }
 
-describe('Edit Document modal', function () {
+describe('Update Document modal', function () {
   let compass: Compass;
   let browser: CompassBrowser;
 
@@ -76,7 +76,7 @@ describe('Edit Document modal', function () {
     await openEditModalFor(browser, '{ i: 5 }');
 
     // Defaults to JSON mode with the document loaded as Extended JSON.
-    await browser.$(Selectors.EditDocumentModalJSONEditor).waitForDisplayed();
+    await browser.$(Selectors.UpdateDocumentModalJSONEditor).waitForDisplayed();
     const json = await readModalJson(browser);
     expect(json.replace(/\s+/g, ' ')).to.match(
       /\{ "_id": \{ "\$oid": "[a-f0-9]{24}" \}, "i": 5, "j": 0 \}/
@@ -84,21 +84,21 @@ describe('Edit Document modal', function () {
 
     const edited = JSON.stringify({ ...JSON.parse(json), j: 555 });
     await browser.setCodemirrorEditorValue(
-      Selectors.EditDocumentModalJSONEditor,
+      Selectors.UpdateDocumentModalJSONEditor,
       edited
     );
 
     const footer = browser.$(
-      Selectors.EditDocumentModal + ' ' + Selectors.DocumentFooter
+      Selectors.UpdateDocumentModal + ' ' + Selectors.DocumentFooter
     );
     await browser.waitUntil(async () => {
       return (await footer.getAttribute('data-status')) === 'Modified';
     });
 
-    await browser.clickVisible(Selectors.EditDocumentModalUpdateButton);
+    await browser.clickVisible(Selectors.UpdateDocumentModalUpdateButton);
     // A successful save closes the modal.
     await browser
-      .$(Selectors.EditDocumentModal)
+      .$(Selectors.UpdateDocumentModal)
       .waitForDisplayed({ reverse: true });
 
     await browser.runFindOperation('Documents', '{ i: 5 }');
@@ -115,32 +115,32 @@ describe('Edit Document modal', function () {
 
   it('shows the footer actions and the copy button on open (before any edit)', async function () {
     await openEditModalFor(browser, '{ i: 9 }');
-    await browser.$(Selectors.EditDocumentModalJSONEditor).waitForDisplayed();
+    await browser.$(Selectors.UpdateDocumentModalJSONEditor).waitForDisplayed();
 
     // The Cancel/Update footer must be visible immediately, before any
     // modification (regression guard: full-screen layout used to push it
     // below the viewport).
-    await browser.$(Selectors.EditDocumentModalCancelButton).waitForDisplayed();
-    await browser.$(Selectors.EditDocumentModalUpdateButton).waitForDisplayed();
+    await browser.$(Selectors.UpdateDocumentModalCancelButton).waitForDisplayed();
+    await browser.$(Selectors.UpdateDocumentModalUpdateButton).waitForDisplayed();
     // Copy is re-enabled on the JSON editor. The editor's action buttons are
     // display:none until the editor is hovered/focused (by design), so hover
     // it first, then assert the Copy action is available.
-    await browser.hover(Selectors.EditDocumentModalJSONEditor);
-    await browser.$(Selectors.EditDocumentModalCopyButton).waitForDisplayed();
+    await browser.hover(Selectors.UpdateDocumentModalJSONEditor);
+    await browser.$(Selectors.UpdateDocumentModalCopyButton).waitForDisplayed();
 
-    await browser.clickVisible(Selectors.EditDocumentModalCancelButton);
+    await browser.clickVisible(Selectors.UpdateDocumentModalCancelButton);
     await browser
-      .$(Selectors.EditDocumentModal)
+      .$(Selectors.UpdateDocumentModal)
       .waitForDisplayed({ reverse: true });
   });
 
   it('expands the editor to fill the modal height', async function () {
     await openEditModalFor(browser, '{ i: 10 }');
-    await browser.$(Selectors.EditDocumentModalJSONEditor).waitForDisplayed();
+    await browser.$(Selectors.UpdateDocumentModalJSONEditor).waitForDisplayed();
 
-    const modalSize = await browser.$(Selectors.EditDocumentModal).getSize();
+    const modalSize = await browser.$(Selectors.UpdateDocumentModal).getSize();
     const editorSize = await browser
-      .$(Selectors.EditDocumentModalEditorContainer)
+      .$(Selectors.UpdateDocumentModalEditorContainer)
       .getSize();
 
     // Regression guard: the editor must fill most of the modal. It used to be
@@ -149,9 +149,9 @@ describe('Edit Document modal', function () {
     // window sizes while still failing if the editor collapses again.
     expect(editorSize.height).to.be.greaterThan(modalSize.height * 0.6);
 
-    await browser.clickVisible(Selectors.EditDocumentModalCancelButton);
+    await browser.clickVisible(Selectors.UpdateDocumentModalCancelButton);
     await browser
-      .$(Selectors.EditDocumentModal)
+      .$(Selectors.UpdateDocumentModal)
       .waitForDisplayed({ reverse: true });
   });
 
@@ -161,24 +161,24 @@ describe('Edit Document modal', function () {
     const json = await readModalJson(browser);
     const edited = JSON.stringify({ ...JSON.parse(json), j: 111 });
     await browser.setCodemirrorEditorValue(
-      Selectors.EditDocumentModalJSONEditor,
+      Selectors.UpdateDocumentModalJSONEditor,
       edited
     );
 
     // JSON -> Tree applies the edited JSON into the structured editor.
-    await browser.clickVisible(Selectors.EditDocumentModalModeTree);
-    await browser.$(Selectors.EditDocumentModalTreeEditor).waitForDisplayed();
+    await browser.clickVisible(Selectors.UpdateDocumentModalModeTree);
+    await browser.$(Selectors.UpdateDocumentModalTreeEditor).waitForDisplayed();
 
     // Tree -> JSON regenerates the text; the edit must survive the round-trip.
-    await browser.clickVisible(Selectors.EditDocumentModalModeJSON);
-    await browser.$(Selectors.EditDocumentModalJSONEditor).waitForDisplayed();
+    await browser.clickVisible(Selectors.UpdateDocumentModalModeJSON);
+    await browser.$(Selectors.UpdateDocumentModalJSONEditor).waitForDisplayed();
     await browser.waitUntil(async () => {
       return /"j":\s*111/.test(await readModalJson(browser));
     });
 
-    await browser.clickVisible(Selectors.EditDocumentModalUpdateButton);
+    await browser.clickVisible(Selectors.UpdateDocumentModalUpdateButton);
     await browser
-      .$(Selectors.EditDocumentModal)
+      .$(Selectors.UpdateDocumentModal)
       .waitForDisplayed({ reverse: true });
 
     await browser.runFindOperation('Documents', '{ i: 6 }');
@@ -196,36 +196,36 @@ describe('Edit Document modal', function () {
     await openEditModalFor(browser, '{ i: 7 }');
 
     await browser.setCodemirrorEditorValue(
-      Selectors.EditDocumentModalJSONEditor,
+      Selectors.UpdateDocumentModalJSONEditor,
       '{ this is not valid json }'
     );
 
     const footer = browser.$(
-      Selectors.EditDocumentModal + ' ' + Selectors.DocumentFooter
+      Selectors.UpdateDocumentModal + ' ' + Selectors.DocumentFooter
     );
     await browser.waitUntil(async () => {
       return (await footer.getAttribute('data-status')) === 'ContainsErrors';
     });
 
     // Attempting to save while invalid keeps the modal open.
-    await browser.clickVisible(Selectors.EditDocumentModalUpdateButton);
-    expect(await browser.$(Selectors.EditDocumentModal).isDisplayed()).to.equal(
+    await browser.clickVisible(Selectors.UpdateDocumentModalUpdateButton);
+    expect(await browser.$(Selectors.UpdateDocumentModal).isDisplayed()).to.equal(
       true
     );
 
     // Correcting the JSON clears the error and lets the save through.
     const fixed = JSON.stringify({ i: 7, j: 777 });
     await browser.setCodemirrorEditorValue(
-      Selectors.EditDocumentModalJSONEditor,
+      Selectors.UpdateDocumentModalJSONEditor,
       fixed
     );
     await browser.waitUntil(async () => {
       return (await footer.getAttribute('data-status')) === 'Modified';
     });
 
-    await browser.clickVisible(Selectors.EditDocumentModalUpdateButton);
+    await browser.clickVisible(Selectors.UpdateDocumentModalUpdateButton);
     await browser
-      .$(Selectors.EditDocumentModal)
+      .$(Selectors.UpdateDocumentModal)
       .waitForDisplayed({ reverse: true });
 
     await browser.runFindOperation('Documents', '{ i: 7 }');
@@ -241,13 +241,13 @@ describe('Edit Document modal', function () {
 
   it('opens the find bar with Ctrl/Cmd+F and reports a match count', async function () {
     await openEditModalFor(browser, '{ i: 8 }');
-    await browser.$(Selectors.EditDocumentModalJSONEditor).waitForDisplayed();
+    await browser.$(Selectors.UpdateDocumentModalJSONEditor).waitForDisplayed();
 
     await browser.keys(['Control', 'f']);
-    await browser.$(Selectors.EditDocumentModalFind).waitForDisplayed();
+    await browser.$(Selectors.UpdateDocumentModalFind).waitForDisplayed();
 
-    await browser.setValueVisible(Selectors.EditDocumentModalFindInput, 'i');
-    const counter = browser.$(Selectors.EditDocumentModalFindCounter);
+    await browser.setValueVisible(Selectors.UpdateDocumentModalFindInput, 'i');
+    const counter = browser.$(Selectors.UpdateDocumentModalFindCounter);
     await browser.waitUntil(async () => {
       const text = await counter.getText();
       return /\d+ of \d+|\d+ match(es)?/.test(text);
@@ -261,13 +261,13 @@ describe('Edit Document modal', function () {
     await browser.waitUntil(async () => {
       return (await counter.getText()) === '';
     });
-    expect(await browser.$(Selectors.EditDocumentModal).isDisplayed()).to.equal(
+    expect(await browser.$(Selectors.UpdateDocumentModal).isDisplayed()).to.equal(
       true
     );
 
-    await browser.clickVisible(Selectors.EditDocumentModalCancelButton);
+    await browser.clickVisible(Selectors.UpdateDocumentModalCancelButton);
     await browser
-      .$(Selectors.EditDocumentModal)
+      .$(Selectors.UpdateDocumentModal)
       .waitForDisplayed({ reverse: true });
   });
 });

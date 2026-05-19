@@ -59,7 +59,7 @@ export type JSONEditorProps = {
   updateDocument?: CrudActions['updateDocument'];
   copyToClipboard?: CrudActions['copyToClipboard'];
   openInsertDocumentDialog?: CrudActions['openInsertDocumentDialog'];
-  openEditDocumentDialog?: CrudActions['openEditDocumentDialog'];
+  openUpdateDocumentModal?: CrudActions['openUpdateDocumentModal'];
 };
 
 const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
@@ -71,7 +71,7 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   replaceDocument,
   copyToClipboard,
   openInsertDocumentDialog,
-  openEditDocumentDialog,
+  openUpdateDocumentModal,
 }) => {
   const darkMode = useDarkMode();
   const editorRef = useRef<EditorRef>(null);
@@ -134,8 +134,8 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   const onEdit = useCallback(() => {
     // Editing is now handled by a dedicated modal rather than switching the
     // JSON card into inline editing.
-    openEditDocumentDialog?.(doc);
-  }, [doc, openEditDocumentDialog]);
+    openUpdateDocumentModal?.(doc);
+  }, [doc, openUpdateDocumentModal]);
 
   const onEditingStarted = useCallback(() => {
     setEditing(true);

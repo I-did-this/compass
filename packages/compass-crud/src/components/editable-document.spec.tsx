@@ -42,7 +42,7 @@ describe('<EditableDocument />', function () {
   describe('edit routing', function () {
     it('opens the edit modal instead of entering an inline edit state', function () {
       const doc = new HadronDocument({ a: 1 });
-      const openEditDocumentDialog = sinon.spy();
+      const openUpdateDocumentModal = sinon.spy();
       const startEditing = sinon.spy(doc, 'startEditing');
       render(
         <EditableDocument
@@ -52,13 +52,13 @@ describe('<EditableDocument />', function () {
           updateDocument={sinon.spy()}
           copyToClipboard={sinon.spy()}
           openInsertDocumentDialog={sinon.spy()}
-          openEditDocumentDialog={openEditDocumentDialog}
+          openUpdateDocumentModal={openUpdateDocumentModal}
         />
       );
 
       userEvent.click(screen.getByTestId('edit-document-button'));
 
-      expect(openEditDocumentDialog).to.have.been.calledOnceWith(doc);
+      expect(openUpdateDocumentModal).to.have.been.calledOnceWith(doc);
       // The row does not enter an inline editing state
       expect(startEditing).to.not.have.been.called;
       expect(screen.queryByTestId('document-footer')).to.not.exist;

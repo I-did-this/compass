@@ -23,7 +23,7 @@ export type DocumentListViewItemProps = {
   | 'replaceDocument'
   | 'updateDocument'
   | 'openInsertDocumentDialog'
-  | 'openEditDocumentDialog'
+  | 'openUpdateDocumentModal'
 >;
 
 const DocumentListViewItem: React.FC<DocumentListViewItemProps> = ({
@@ -38,14 +38,14 @@ const DocumentListViewItem: React.FC<DocumentListViewItemProps> = ({
   replaceDocument,
   updateDocument,
   openInsertDocumentDialog,
-  openEditDocumentDialog,
+  openUpdateDocumentModal,
 }) => {
   const contextMenuRef = useDocumentItemContextMenu({
     doc,
     isEditable,
     copyToClipboard,
     openInsertDocumentDialog,
-    openEditDocumentDialog,
+    openUpdateDocumentModal,
   });
 
   const changeQuery = useChangeQueryBarQuery();
@@ -78,7 +78,7 @@ const DocumentListViewItem: React.FC<DocumentListViewItemProps> = ({
         replaceDocument={replaceDocument}
         updateDocument={updateDocument}
         openInsertDocumentDialog={openInsertDocumentDialog}
-        openEditDocumentDialog={openEditDocumentDialog}
+        openUpdateDocumentModal={openUpdateDocumentModal}
       />
     </KeylineCard>
   );

@@ -26,8 +26,8 @@ import {
 import type { EditorRef } from '@mongodb-js/compass-editor';
 import { useAutocompleteFields } from '@mongodb-js/compass-field-store';
 import type { CrudActions } from '../stores/crud-store';
-import EditDocumentFind from './edit-document-find';
-import type { EditDocumentFindRef } from './edit-document-find';
+import UpdateDocumentFind from './update-document-find';
+import type { UpdateDocumentFindRef } from './update-document-find';
 
 type EditMode = 'JSON' | 'Tree';
 
@@ -145,26 +145,26 @@ const noop = () => {
   /* the modal never deletes documents */
 };
 
-export type EditDocumentModalProps = {
+export type UpdateDocumentModalProps = {
   isOpen: boolean;
   doc: Document | null;
   namespace: string;
-  closeEditDocumentDialog: CrudActions['closeEditDocumentDialog'];
+  closeUpdateDocumentModal: CrudActions['closeUpdateDocumentModal'];
   replaceDocument: CrudActions['replaceDocument'];
   updateDocument: CrudActions['updateDocument'];
 };
 
-const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
+const UpdateDocumentModal: React.FunctionComponent<UpdateDocumentModalProps> = ({
   isOpen,
   doc,
   namespace,
-  closeEditDocumentDialog,
+  closeUpdateDocumentModal,
   replaceDocument,
   updateDocument,
 }) => {
   const darkMode = useDarkMode();
   const editorRef = useRef<EditorRef>(null);
-  const findRef = useRef<EditDocumentFindRef>(null);
+  const findRef = useRef<UpdateDocumentFindRef>(null);
   const editorId = useId();
 
   const [mode, setMode] = useState<EditMode>('JSON');
@@ -271,17 +271,17 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
   );
 
   const handleCancel = useCallback(() => {
-    closeEditDocumentDialog();
-  }, [closeEditDocumentDialog]);
+    closeUpdateDocumentModal();
+  }, [closeUpdateDocumentModal]);
 
   const onSetOpen = useCallback(
     (open: boolean) => {
       // Closing the modal by any means must end the editing session.
       if (!open) {
-        closeEditDocumentDialog();
+        closeUpdateDocumentModal();
       }
     },
-    [closeEditDocumentDialog]
+    [closeUpdateDocumentModal]
   );
 
   // Close the modal once a save succeeds. On save error the modal stays open
@@ -291,13 +291,13 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
       return;
     }
     const onUpdateSuccess = () => {
-      closeEditDocumentDialog();
+      closeUpdateDocumentModal();
     };
     doc.on(HadronDocument.Events.UpdateSuccess, onUpdateSuccess);
     return () => {
       doc.removeListener(HadronDocument.Events.UpdateSuccess, onUpdateSuccess);
     };
-  }, [doc, closeEditDocumentDialog]);
+  }, [doc, closeUpdateDocumentModal]);
 
   // Ctrl/Cmd+F focuses the find bar, but only while the modal is open in
   // JSON mode (find is intentionally scoped to JSON mode).
@@ -326,9 +326,9 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
       setOpen={onSetOpen}
       fullScreen={isFullScreen}
       className={modalContentStyles}
-      data-testid="edit-document-modal"
+      data-testid="update-document-modal"
     >
-      <ModalHeader title="Edit Document" subtitle={namespace} />
+      <ModalHeader title="Update Document" subtitle={namespace} />
       <ModalBody className={modalBodyStyles}>
         {doc && (
           <div className={bodyStyles}>
@@ -345,12 +345,12 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
                     size="small"
                     value={mode}
                     onChange={onModeChange}
-                    data-testid="edit-document-mode"
+                    data-testid="update-document-mode"
                   >
                     <SegmentedControlOption
                       value="JSON"
                       aria-label="JSON editor"
-                      data-testid="edit-document-mode-json"
+                      data-testid="update-document-mode-json"
                       glyph={<Icon glyph="CurlyBraces" />}
                     >
                       JSON
@@ -358,7 +358,7 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
                     <SegmentedControlOption
                       value="Tree"
                       aria-label="Tree editor"
-                      data-testid="edit-document-mode-tree"
+                      data-testid="update-document-mode-tree"
                       glyph={<Icon glyph="Menu" />}
                     >
                       Tree
@@ -369,7 +369,7 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
                       isFullScreen ? 'Exit full screen' : 'Enter full screen'
                     }
                     onClick={() => setIsFullScreen((value) => !value)}
-                    data-testid="edit-document-fullscreen-toggle"
+                    data-testid="update-document-fullscreen-toggle"
                   >
                     <Icon
                       glyph={
@@ -381,7 +381,7 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
               </div>
 
               {mode === 'JSON' && (
-                <EditDocumentFind
+                <UpdateDocumentFind
                   key={`find-${renderKey}`}
                   ref={findRef}
                   editorRef={editorRef}
@@ -394,14 +394,14 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
                 editorCardStyles,
                 darkMode ? editorCardDarkStyles : editorCardLightStyles
               )}
-              data-testid="edit-document-editor-container"
+              data-testid="update-document-editor-container"
             >
               {mode === 'JSON' ? (
                 <CodemirrorMultilineEditor
                   key={`json-${renderKey}`}
                   ref={editorRef}
                   id={editorId}
-                  data-testid="edit-document-json-editor"
+                  data-testid="update-document-json-editor"
                   language="json"
                   text={jsonText}
                   onChangeText={onChangeJson}
@@ -414,7 +414,7 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
               ) : (
                 <div
                   className={treeEditorStyles}
-                  data-testid="edit-document-tree-editor"
+                  data-testid="update-document-tree-editor"
                 >
                   <DocumentList.Document value={doc} editable editing />
                 </div>
@@ -451,4 +451,4 @@ const EditDocumentModal: React.FunctionComponent<EditDocumentModalProps> = ({
   );
 };
 
-export default EditDocumentModal;
+export default UpdateDocumentModal;

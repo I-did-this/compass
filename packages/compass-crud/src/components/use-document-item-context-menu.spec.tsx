@@ -13,14 +13,14 @@ const TestComponent: React.FC<
   isEditable,
   copyToClipboard,
   openInsertDocumentDialog,
-  openEditDocumentDialog,
+  openUpdateDocumentModal,
 }) => {
   const ref = useDocumentItemContextMenu({
     doc,
     isEditable,
     copyToClipboard,
     openInsertDocumentDialog,
-    openEditDocumentDialog,
+    openUpdateDocumentModal,
   });
 
   return (
@@ -34,7 +34,7 @@ describe('useDocumentItemContextMenu', function () {
   let doc: HadronDocument;
   let copyToClipboardStub: sinon.SinonStub;
   let openInsertDocumentDialogStub: sinon.SinonStub;
-  let openEditDocumentDialogStub: sinon.SinonStub;
+  let openUpdateDocumentModalStub: sinon.SinonStub;
   let collapseStub: sinon.SinonStub;
   let expandStub: sinon.SinonStub;
   let startEditingStub: sinon.SinonStub;
@@ -51,7 +51,7 @@ describe('useDocumentItemContextMenu', function () {
 
     copyToClipboardStub = sinon.stub();
     openInsertDocumentDialogStub = sinon.stub();
-    openEditDocumentDialogStub = sinon.stub();
+    openUpdateDocumentModalStub = sinon.stub();
 
     // Set up document methods as stubs
     collapseStub = sinon.stub(doc, 'collapse');
@@ -89,13 +89,13 @@ describe('useDocumentItemContextMenu', function () {
 
       // Should show all operations
       expect(screen.getByText('Expand all fields')).to.exist;
-      expect(screen.getByText('Edit document')).to.exist;
+      expect(screen.getByText('Update document')).to.exist;
       expect(screen.getByText('Copy document')).to.exist;
       expect(screen.getByText('Clone document...')).to.exist;
       expect(screen.getByText('Delete document')).to.exist;
     });
 
-    it('always offers "Edit document" (editing is handled by a modal, not an inline state)', function () {
+    it('always offers "Update document" (editing is handled by a modal, not an inline state)', function () {
       doc.expanded = false;
       doc.editing = true;
 
@@ -105,7 +105,7 @@ describe('useDocumentItemContextMenu', function () {
           isEditable={true}
           copyToClipboard={copyToClipboardStub}
           openInsertDocumentDialog={openInsertDocumentDialogStub}
-          openEditDocumentDialog={openEditDocumentDialogStub}
+          openUpdateDocumentModal={openUpdateDocumentModalStub}
         />
       );
 
@@ -113,9 +113,9 @@ describe('useDocumentItemContextMenu', function () {
       userEvent.click(screen.getByTestId('test-container'), { button: 2 });
 
       // The inline "Cancel editing" toggle no longer exists; the edit entry
-      // point is always "Edit document".
+      // point is always "Update document".
       expect(screen.queryByText('Cancel editing')).to.not.exist;
-      expect(screen.getByText('Edit document')).to.exist;
+      expect(screen.getByText('Update document')).to.exist;
       // Other operations still present
       expect(screen.getByText('Expand all fields')).to.exist;
       expect(screen.getByText('Copy document')).to.exist;
@@ -145,7 +145,7 @@ describe('useDocumentItemContextMenu', function () {
       expect(screen.getByText('Copy document')).to.exist;
 
       // Should hide mutating operations
-      expect(screen.queryByText('Edit document')).to.not.exist;
+      expect(screen.queryByText('Update document')).to.not.exist;
       expect(screen.queryByText('Clone document...')).to.not.exist;
       expect(screen.queryByText('Delete document')).to.not.exist;
     });
@@ -176,7 +176,7 @@ describe('useDocumentItemContextMenu', function () {
   });
 
   describe('edit document functionality', function () {
-    it('opens the edit modal when "Edit document" is clicked', function () {
+    it('opens the edit modal when "Update document" is clicked', function () {
       doc.editing = false;
       render(
         <TestComponent
@@ -184,23 +184,23 @@ describe('useDocumentItemContextMenu', function () {
           isEditable={true}
           copyToClipboard={copyToClipboardStub}
           openInsertDocumentDialog={openInsertDocumentDialogStub}
-          openEditDocumentDialog={openEditDocumentDialogStub}
+          openUpdateDocumentModal={openUpdateDocumentModalStub}
         />
       );
 
       // Right-click to open context menu
       userEvent.click(screen.getByTestId('test-container'), { button: 2 });
 
-      expect(screen.getByText('Edit document')).to.exist;
+      expect(screen.getByText('Update document')).to.exist;
       expect(screen.queryByText('Cancel editing')).to.not.exist;
 
       // Click edit
-      userEvent.click(screen.getByText('Edit document'), undefined, {
+      userEvent.click(screen.getByText('Update document'), undefined, {
         skipPointerEventsCheck: true,
       });
 
       // Routes to the dedicated modal rather than entering an inline edit state
-      expect(openEditDocumentDialogStub).to.have.been.calledOnceWith(doc);
+      expect(openUpdateDocumentModalStub).to.have.been.calledOnceWith(doc);
       expect(startEditingStub).to.not.have.been.called;
     });
 
@@ -212,7 +212,7 @@ describe('useDocumentItemContextMenu', function () {
           isEditable={true}
           copyToClipboard={copyToClipboardStub}
           openInsertDocumentDialog={openInsertDocumentDialogStub}
-          openEditDocumentDialog={openEditDocumentDialogStub}
+          openUpdateDocumentModal={openUpdateDocumentModalStub}
         />
       );
 
@@ -222,11 +222,11 @@ describe('useDocumentItemContextMenu', function () {
       // The legacy inline "Cancel editing" toggle is gone
       expect(screen.queryByText('Cancel editing')).to.not.exist;
 
-      userEvent.click(screen.getByText('Edit document'), undefined, {
+      userEvent.click(screen.getByText('Update document'), undefined, {
         skipPointerEventsCheck: true,
       });
 
-      expect(openEditDocumentDialogStub).to.have.been.calledOnceWith(doc);
+      expect(openUpdateDocumentModalStub).to.have.been.calledOnceWith(doc);
       expect(finishEditingStub).to.not.have.been.called;
     });
   });

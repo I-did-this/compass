@@ -624,29 +624,29 @@ export const OpenBulkUpdateButton = '[data-testid="crud-update"]';
 export const OpenBulkDeleteButton = '[data-testid="crud-bulk-delete"]';
 export const ErrorDetailsJson = '[data-testid="error-details-json"]';
 
-// Edit Document modal (replaces the old inline document-editing flow).
-export const EditDocumentModal = '[data-testid="edit-document-modal"]';
-export const EditDocumentModalJSONEditor =
-  '[data-testid="edit-document-json-editor"]';
-export const EditDocumentModalTreeEditor =
-  '[data-testid="edit-document-tree-editor"]';
-export const EditDocumentModalModeJSON =
-  '[data-testid="edit-document-mode-json"]';
-export const EditDocumentModalModeTree =
-  '[data-testid="edit-document-mode-tree"]';
-export const EditDocumentModalFullscreenToggle =
-  '[data-testid="edit-document-fullscreen-toggle"]';
-export const EditDocumentModalUpdateButton = `${EditDocumentModal} [data-testid="update-button"]`;
-export const EditDocumentModalCancelButton = `${EditDocumentModal} [data-testid="cancel-button"]`;
-export const EditDocumentModalFooterMessage = `${EditDocumentModal} [data-testid="document-footer-message"]`;
-export const EditDocumentModalFind = '[data-testid="edit-document-find"]';
-export const EditDocumentModalFindInput =
-  '[data-testid="edit-document-find-input"]';
-export const EditDocumentModalFindCounter =
-  '[data-testid="edit-document-find-counter"]';
-export const EditDocumentModalCopyButton = `${EditDocumentModal} [data-testid="editor-action-Copy"]`;
-export const EditDocumentModalEditorContainer =
-  '[data-testid="edit-document-editor-container"]';
+// Update Document modal (replaces the old inline document-editing flow).
+export const UpdateDocumentModal = '[data-testid="update-document-modal"]';
+export const UpdateDocumentModalJSONEditor =
+  '[data-testid="update-document-json-editor"]';
+export const UpdateDocumentModalTreeEditor =
+  '[data-testid="update-document-tree-editor"]';
+export const UpdateDocumentModalModeJSON =
+  '[data-testid="update-document-mode-json"]';
+export const UpdateDocumentModalModeTree =
+  '[data-testid="update-document-mode-tree"]';
+export const UpdateDocumentModalFullscreenToggle =
+  '[data-testid="update-document-fullscreen-toggle"]';
+export const UpdateDocumentModalUpdateButton = `${UpdateDocumentModal} [data-testid="update-button"]`;
+export const UpdateDocumentModalCancelButton = `${UpdateDocumentModal} [data-testid="cancel-button"]`;
+export const UpdateDocumentModalFooterMessage = `${UpdateDocumentModal} [data-testid="document-footer-message"]`;
+export const UpdateDocumentModalFind = '[data-testid="update-document-find"]';
+export const UpdateDocumentModalFindInput =
+  '[data-testid="update-document-find-input"]';
+export const UpdateDocumentModalFindCounter =
+  '[data-testid="update-document-find-counter"]';
+export const UpdateDocumentModalCopyButton = `${UpdateDocumentModal} [data-testid="editor-action-Copy"]`;
+export const UpdateDocumentModalEditorContainer =
+  '[data-testid="update-document-editor-container"]';
 export const DocumentTableContainer = `.document-table-view-container`;
 
 // Insert Document modal

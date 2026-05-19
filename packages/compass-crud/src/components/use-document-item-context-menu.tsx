@@ -8,7 +8,7 @@ export type UseDocumentItemContextMenuProps = {
   isEditable: boolean;
 } & Pick<
   DocumentProps,
-  'copyToClipboard' | 'openInsertDocumentDialog' | 'openEditDocumentDialog'
+  'copyToClipboard' | 'openInsertDocumentDialog' | 'openUpdateDocumentModal'
 >;
 
 export function useDocumentItemContextMenu({
@@ -16,7 +16,7 @@ export function useDocumentItemContextMenu({
   isEditable,
   copyToClipboard,
   openInsertDocumentDialog,
-  openEditDocumentDialog,
+  openUpdateDocumentModal,
 }: UseDocumentItemContextMenuProps) {
   const { expanded: isExpanded, editing: isEditing } = doc;
 
@@ -27,11 +27,11 @@ export function useDocumentItemContextMenu({
             telemetryLabel: 'Document Item Edit',
             items: [
               {
-                label: 'Edit document',
+                label: 'Update document',
                 onAction: () => {
                   // Editing is handled by a dedicated modal rather than an
                   // inline editable state.
-                  openEditDocumentDialog?.(doc);
+                  openUpdateDocumentModal?.(doc);
                 },
               },
             ],
@@ -90,7 +90,7 @@ export function useDocumentItemContextMenu({
       isEditable,
       copyToClipboard,
       openInsertDocumentDialog,
-      openEditDocumentDialog,
+      openUpdateDocumentModal,
     ]
   );
 }

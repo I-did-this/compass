@@ -122,7 +122,7 @@ describe('VirtualizedDocumentListView', function () {
 
     // Start editing the document
     userEvent.click(
-      within(firstDocumentElement).getByLabelText('Edit document')
+      within(firstDocumentElement).getByLabelText('Update document')
     );
 
     // Verify that we have an editing state
@@ -175,7 +175,7 @@ describe('VirtualizedDocumentListView', function () {
     let [documentElement] = screen.getAllByTestId('editable-document');
 
     // Start editing the document
-    userEvent.click(within(documentElement).getByLabelText('Edit document'));
+    userEvent.click(within(documentElement).getByLabelText('Update document'));
 
     // Verify that we have an editing state
     expect(within(documentElement).getByText('Cancel')).to.be.visible;
