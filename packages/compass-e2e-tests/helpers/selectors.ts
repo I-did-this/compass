@@ -634,8 +634,6 @@ export const EditDocumentModalModeJSON =
   '[data-testid="edit-document-mode-json"]';
 export const EditDocumentModalModeTree =
   '[data-testid="edit-document-mode-tree"]';
-export const EditDocumentModalValidateButton =
-  '[data-testid="edit-document-validate-button"]';
 export const EditDocumentModalFullscreenToggle =
   '[data-testid="edit-document-fullscreen-toggle"]';
 export const EditDocumentModalUpdateButton = `${EditDocumentModal} [data-testid="update-button"]`;
