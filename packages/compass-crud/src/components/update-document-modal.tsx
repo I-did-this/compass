@@ -4,14 +4,12 @@ import {
   cx,
   spacing,
   palette,
-  Label,
   Icon,
   IconButton,
   KeylineCard,
   SegmentedControl,
   SegmentedControlOption,
   Modal,
-  ModalHeader,
   ModalBody,
   DocumentList,
   useDarkMode,
@@ -38,19 +36,65 @@ const bodyStyles = css({
   height: '100%',
 });
 
+// Single-row top bar that lives in the same row as LeafyGreen's close X.
+// `paddingRight` reserves space for the absolutely-positioned X button
+// (LG puts it at top:18px / right:18px, ~24px wide) so the toolbar's right
+// edge controls never collide with it.
 const toolbarStyles = css({
   display: 'flex',
   flexDirection: 'row',
   alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: spacing[200],
+  gap: spacing[300],
+  paddingRight: spacing[1200],
 });
 
-const toolbarGroupStyles = css({
+const titleGroupStyles = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: spacing[25],
+  flex: 'none',
+  minWidth: 0,
+});
+
+const titleStyles = css({
+  margin: 0,
+  fontWeight: 700,
+  fontSize: '16px',
+  lineHeight: 1.2,
+  whiteSpace: 'nowrap',
+});
+
+const subtitleStyles = css({
+  fontSize: '12px',
+  lineHeight: 1.2,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  minWidth: 0,
+});
+
+const subtitleLightStyles = css({
+  color: palette.gray.dark1,
+});
+
+const subtitleDarkStyles = css({
+  color: palette.gray.light1,
+});
+
+// Find bar grows to fill the row when in JSON mode; an empty placeholder of
+// the same flex behaviour keeps the right-side controls anchored consistently
+// in Tree mode (where Find is intentionally hidden).
+const findGroupStyles = css({
+  flex: 1,
+  minWidth: spacing[1800] * 2,
+});
+
+const controlsGroupStyles = css({
   display: 'flex',
   flexDirection: 'row',
   alignItems: 'center',
-  gap: spacing[200],
+  gap: spacing[100],
+  flex: 'none',
 });
 
 // The document is presented inside a KeylineCard (the standard Compass card
@@ -77,18 +121,15 @@ const treeEditorStyles = css({
   padding: spacing[200],
 });
 
-// ModalBody is the scroll container, so the toolbar and find bar (which live
-// inside it, above the editor) would scroll away with the document. Pin them
-// to the top, and pin the actions footer to the bottom, so they stay put
-// while only the editor content scrolls underneath. An opaque background is
-// required so the scrolling JSON does not show through.
+// ModalBody is the scroll container, so the toolbar (which lives inside it,
+// above the editor) would scroll away with the document. Pin it to the top,
+// and pin the actions footer to the bottom, so they stay put while only the
+// editor content scrolls underneath. An opaque background is required so the
+// scrolling JSON does not show through.
 const stickyHeaderStyles = css({
   position: 'sticky',
   top: 0,
   zIndex: 2,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: spacing[200],
   paddingBottom: spacing[200],
   backgroundColor: palette.white,
 });
@@ -110,7 +151,7 @@ const stickyDarkStyles = css({
 // mid-modal. A height:100% chain is fragile through LG's internal wrappers,
 // so instead pin a definite height on the dialog and turn it into a flex
 // column whose content wrapper grows. LG renders:
-//   <dialog className={ours}> <Body as="div"> {ModalHeader}{ModalBody} </Body>
+//   <dialog className={ours}> <Body as="div"> {ModalBody} </Body>
 //   <CloseButton/> <portalDiv/> </dialog>
 // so the first child div is the Body wrapper we need to flex-grow. Applied
 // via the passed-through className so only this modal is affected (the shared
@@ -119,6 +160,16 @@ const modalContentStyles = css({
   height: `calc(100vh - 2 * ${spacing[600]}px)`,
   display: 'flex',
   flexDirection: 'column',
+  // compass-components Modal forces padding:0 on the dialog. Restore a small
+  // top padding so the custom toolbar sits in the same vertical band as the
+  // close X (absolutely positioned at top:18px from the dialog padding edge),
+  // and restore a small right padding so the X has visual breathing room
+  // — `right: 18px` is measured from the padding box, so dialog paddingRight
+  // shifts the X inward and prevents the hover circle from being clipped by
+  // the dialog border.
+  paddingTop: spacing[400],
+  paddingRight: spacing[400],
+  paddingLeft: spacing[400],
   '& > div:first-of-type': {
     flex: 1,
     minHeight: 0,
@@ -139,6 +190,12 @@ const modalBodyStyles = css({
   maxHeight: 'none',
   display: 'flex',
   flexDirection: 'column',
+  // LG ModalBody adds paddingTop: spacing[800] (16px) when it is the first
+  // child. Without ModalHeader it IS the first child, and the extra 16px
+  // would push the toolbar below the close-X row — zero it out.
+  '&:first-child': {
+    paddingTop: 0,
+  },
 });
 
 const noop = () => {
@@ -154,7 +211,9 @@ export type UpdateDocumentModalProps = {
   updateDocument: CrudActions['updateDocument'];
 };
 
-const UpdateDocumentModal: React.FunctionComponent<UpdateDocumentModalProps> = ({
+const UpdateDocumentModal: React.FunctionComponent<
+  UpdateDocumentModalProps
+> = ({
   isOpen,
   doc,
   namespace,
@@ -172,6 +231,11 @@ const UpdateDocumentModal: React.FunctionComponent<UpdateDocumentModalProps> = (
   const [initialJson, setInitialJson] = useState('');
   const [validationError, setValidationError] = useState<Error | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(true);
+  // In small modal mode the Find input is collapsed behind a magnifier
+  // IconButton to keep the toolbar single-row; this flag tracks whether the
+  // user has opened it. Ignored in full-screen mode (find is always visible
+  // there) and irrelevant in Tree mode (find is JSON-only).
+  const [isSmallFindOpen, setIsSmallFindOpen] = useState(false);
   // Bumped on every open so the editor and find bar fully remount, which
   // clears any prior search and editor state.
   const [renderKey, setRenderKey] = useState(0);
@@ -189,10 +253,30 @@ const UpdateDocumentModal: React.FunctionComponent<UpdateDocumentModalProps> = (
       setMode('JSON');
       setValidationError(null);
       setIsFullScreen(true);
+      setIsSmallFindOpen(false);
       setRenderKey((key) => key + 1);
     }
     wasOpenRef.current = isOpen;
   }, [isOpen, doc]);
+
+  // Find is JSON-only, and in full-screen mode it is always inline. Either
+  // condition turning false means the small-mode collapsed-Find state has
+  // nothing to track, so reset it.
+  React.useEffect(() => {
+    if (isFullScreen || mode !== 'JSON') {
+      setIsSmallFindOpen(false);
+    }
+  }, [isFullScreen, mode]);
+
+  // Auto-focus the Find input when the user opens it in small mode so they
+  // can start typing immediately. Must be in an effect — focus() inside the
+  // setState callback would run before React mounts UpdateDocumentFind and
+  // populates findRef.
+  React.useEffect(() => {
+    if (isSmallFindOpen) {
+      findRef.current?.focus();
+    }
+  }, [isSmallFindOpen]);
 
   const fields = useAutocompleteFields(namespace);
   const completer = useMemo(() => {
@@ -327,8 +411,8 @@ const UpdateDocumentModal: React.FunctionComponent<UpdateDocumentModalProps> = (
       fullScreen={isFullScreen}
       className={modalContentStyles}
       data-testid="update-document-modal"
+      aria-labelledby="update-document-title"
     >
-      <ModalHeader title="Update Document" subtitle={namespace} />
       <ModalBody className={modalBodyStyles}>
         {doc && (
           <div className={bodyStyles}>
@@ -336,34 +420,81 @@ const UpdateDocumentModal: React.FunctionComponent<UpdateDocumentModalProps> = (
               className={cx(stickyHeaderStyles, darkMode && stickyDarkStyles)}
             >
               <div className={toolbarStyles}>
-                <div className={toolbarGroupStyles}>
-                  <Label htmlFor={editorId}>Document Editor</Label>
+                {/* Title hides when Find is expanded in small mode so the
+                    Find input has the whole row to itself. */}
+                {!(isSmallFindOpen && !isFullScreen) && (
+                  <div className={titleGroupStyles}>
+                    <h1 id="update-document-title" className={titleStyles}>
+                      Update Document
+                    </h1>
+                    <span
+                      className={cx(
+                        subtitleStyles,
+                        darkMode ? subtitleDarkStyles : subtitleLightStyles
+                      )}
+                    >
+                      {namespace}
+                    </span>
+                  </div>
+                )}
+
+                <div className={findGroupStyles}>
+                  {mode === 'JSON' && (isFullScreen || isSmallFindOpen) && (
+                    <UpdateDocumentFind
+                      key={`find-${renderKey}`}
+                      ref={findRef}
+                      editorRef={editorRef}
+                    />
+                  )}
                 </div>
-                <div className={toolbarGroupStyles}>
-                  <SegmentedControl
-                    label="Editor mode"
-                    size="small"
-                    value={mode}
-                    onChange={onModeChange}
-                    data-testid="update-document-mode"
-                  >
-                    <SegmentedControlOption
-                      value="JSON"
-                      aria-label="JSON editor"
-                      data-testid="update-document-mode-json"
-                      glyph={<Icon glyph="CurlyBraces" />}
+
+                <div className={controlsGroupStyles}>
+                  {/* JSON/Tree toggle is full-screen only — small mode hides
+                      it to free room for the Find icon. */}
+                  {isFullScreen && (
+                    <SegmentedControl
+                      name="update-document-editor-mode"
+                      size="small"
+                      value={mode}
+                      onChange={onModeChange}
+                      data-testid="update-document-mode"
                     >
-                      JSON
-                    </SegmentedControlOption>
-                    <SegmentedControlOption
-                      value="Tree"
-                      aria-label="Tree editor"
-                      data-testid="update-document-mode-tree"
-                      glyph={<Icon glyph="Menu" />}
+                      {/* Icon-only: LG auto-detects when `glyph` is set and
+                          children are omitted. `title` adds a hover tooltip,
+                          `aria-label` keeps screen-reader names. */}
+                      <SegmentedControlOption
+                        value="JSON"
+                        aria-label="JSON editor"
+                        title="JSON editor"
+                        data-testid="update-document-mode-json"
+                        glyph={<Icon glyph="CurlyBraces" />}
+                      />
+                      <SegmentedControlOption
+                        value="Tree"
+                        aria-label="Tree editor"
+                        title="Tree editor"
+                        data-testid="update-document-mode-tree"
+                        glyph={<Icon glyph="Menu" />}
+                      />
+                    </SegmentedControl>
+                  )}
+                  {/* Small mode + JSON: a magnifier IconButton toggles the
+                      collapsed Find input. Becomes an X (close) once open so
+                      the same button collapses it again. */}
+                  {!isFullScreen && mode === 'JSON' && (
+                    <IconButton
+                      aria-label={
+                        isSmallFindOpen ? 'Close find' : 'Find in document'
+                      }
+                      title={
+                        isSmallFindOpen ? 'Close find' : 'Find in document'
+                      }
+                      onClick={() => setIsSmallFindOpen((v) => !v)}
+                      data-testid="update-document-find-toggle"
                     >
-                      Tree
-                    </SegmentedControlOption>
-                  </SegmentedControl>
+                      <Icon glyph={isSmallFindOpen ? 'X' : 'MagnifyingGlass'} />
+                    </IconButton>
+                  )}
                   <IconButton
                     aria-label={
                       isFullScreen ? 'Exit full screen' : 'Enter full screen'
@@ -379,14 +510,6 @@ const UpdateDocumentModal: React.FunctionComponent<UpdateDocumentModalProps> = (
                   </IconButton>
                 </div>
               </div>
-
-              {mode === 'JSON' && (
-                <UpdateDocumentFind
-                  key={`find-${renderKey}`}
-                  ref={findRef}
-                  editorRef={editorRef}
-                />
-              )}
             </div>
 
             <KeylineCard
