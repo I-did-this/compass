@@ -596,6 +596,10 @@ export const DocumentListFetchingStopButton =
 export const DocumentListError = '[data-testid="document-list-error-summary"]';
 export const AddDataButton = '[data-testid="crud-add-data-show-actions"]';
 export const EditDocumentButton = '[data-testid="edit-document-button"]';
+// Wrench button on the row: opens the Update Document modal. Distinct from
+// the pencil (EditDocumentButton) which starts the inline editor.
+export const OpenUpdateDocumentModalButton =
+  '[data-testid="open-update-document-modal-button"]';
 export const InsertDocumentOption =
   '[data-testid="crud-add-data-insert-document-action"]';
 export const ImportFileOption =
@@ -645,6 +649,11 @@ export const UpdateDocumentModalFindInput =
 export const UpdateDocumentModalFindCounter =
   '[data-testid="update-document-find-counter"]';
 export const UpdateDocumentModalCopyButton = `${UpdateDocumentModal} [data-testid="editor-action-Copy"]`;
+// The combined Format + fold-toggle button's testid flips with state: when
+// the editor is expanded the button reads "Collapse all"; once folded it
+// reads "Expand all". Tests can assert which is present to verify state.
+export const UpdateDocumentModalCollapseAllButton = `${UpdateDocumentModal} [data-testid="editor-action-Collapse all"]`;
+export const UpdateDocumentModalExpandAllButton = `${UpdateDocumentModal} [data-testid="editor-action-Expand all"]`;
 export const UpdateDocumentModalEditorContainer =
   '[data-testid="update-document-editor-container"]';
 export const DocumentTableContainer = `.document-table-view-container`;
