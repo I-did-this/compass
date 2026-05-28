@@ -26,6 +26,7 @@ export type DocumentListViewProps = {
   docs: (HadronDocument | BSONObject)[];
   className?: string;
   isEditable: boolean;
+  hasProjection?: boolean;
 } & Pick<
   DocumentProps,
   | 'isTimeSeries'
@@ -60,6 +61,7 @@ class DocumentListView extends React.Component<DocumentListViewProps> {
             <Document
               doc={doc}
               editable={this.props.isEditable}
+              hasProjection={this.props.hasProjection}
               isTimeSeries={this.props.isTimeSeries}
               copyToClipboard={this.props.copyToClipboard}
               removeDocument={this.props.removeDocument}

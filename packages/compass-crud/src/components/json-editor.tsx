@@ -200,6 +200,12 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   }, [fields]);
 
   const isEditable = editable && !deleting && !isTimeSeries;
+  // Wrench (Update Document modal) is decoupled from isEditable: the store
+  // refetches the full doc by _id on open, so the modal is safe even when a
+  // projection is active (in which case the parent passes openUpdateDocumentModal
+  // while clearing isEditable).
+  const canOpenUpdateModal =
+    !!openUpdateDocumentModal && !deleting && !isTimeSeries;
 
   const actions = useMemo<Action[]>(() => {
     if (editing) {
@@ -214,7 +220,7 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
           onEdit();
         },
       },
-      isEditable && {
+      canOpenUpdateModal && {
         icon: 'Wrench',
         label: 'Update document',
         action() {
@@ -250,6 +256,7 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
     handleClone,
     handleCopy,
     isEditable,
+    canOpenUpdateModal,
   ]);
 
   useEffect(() => {

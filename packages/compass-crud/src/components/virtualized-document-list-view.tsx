@@ -44,6 +44,7 @@ const estimateDocumentInitialHeight = (doc: HadronDocument) => {
 type VirtualizedDocumentListViewProps = {
   docs: (HadronDocument | BSONObject)[];
   isEditable: boolean;
+  hasProjection?: boolean;
   initialScrollTop?: number;
   scrollTriggerRef?: React.Ref<HTMLDivElement>;
   scrollableContainerRef?: React.Ref<HTMLDivElement>;
@@ -66,6 +67,7 @@ const VirtualizedDocumentListView: React.FC<
 > = ({
   docs: _docs,
   isEditable,
+  hasProjection,
   isTimeSeries,
   initialScrollTop,
   scrollTriggerRef,
@@ -103,6 +105,7 @@ const VirtualizedDocumentListView: React.FC<
           docRef={docRef}
           docIndex={docIndex}
           isEditable={isEditable}
+          hasProjection={hasProjection}
           isTimeSeries={isTimeSeries}
           scrollTriggerRef={scrollTriggerRef}
           copyToClipboard={copyToClipboard}
@@ -116,6 +119,7 @@ const VirtualizedDocumentListView: React.FC<
     },
     [
       isEditable,
+      hasProjection,
       isTimeSeries,
       scrollTriggerRef,
       copyToClipboard,

@@ -211,6 +211,10 @@ const noop = () => {
 export type UpdateDocumentModalProps = {
   isOpen: boolean;
   doc: Document | null;
+  // Top-level field key the modal should scroll to on open. Set by the
+  // per-field wrench in projection mode (forwarded through crud-store state);
+  // undefined for the row-level wrench, which scrolls to the top of the doc.
+  focusField?: string;
   namespace: string;
   closeUpdateDocumentModal: CrudActions['closeUpdateDocumentModal'];
   replaceDocument: CrudActions['replaceDocument'];
@@ -222,6 +226,7 @@ const UpdateDocumentModal: React.FunctionComponent<
 > = ({
   isOpen,
   doc,
+  focusField,
   namespace,
   closeUpdateDocumentModal,
   replaceDocument,
@@ -275,7 +280,12 @@ const UpdateDocumentModal: React.FunctionComponent<
       } catch {
         formattedLineCount = ejson.split('\n').length;
       }
-      const shouldFold = formattedLineCount > LARGE_DOC_LINE_THRESHOLD;
+      // When the user opened the modal from a per-field wrench, force the
+      // document open so the focused field is visible — otherwise the field
+      // might be hidden inside a folded large block and the find() below
+      // wouldn't have anywhere to scroll to.
+      const shouldFold =
+        !focusField && formattedLineCount > LARGE_DOC_LINE_THRESHOLD;
       setJsonText(ejson);
       setInitialJson(ejson);
       setMode('JSON');
@@ -287,7 +297,28 @@ const UpdateDocumentModal: React.FunctionComponent<
       setRenderKey((key) => key + 1);
     }
     wasOpenRef.current = isOpen;
-  }, [isOpen, doc]);
+  }, [isOpen, doc, focusField]);
+
+  // Scroll the JSON editor to focusField on open. Runs after the open effect
+  // bumps renderKey and the editor remounts, so editorRef points at the new
+  // instance. CodeMirror's view needs a frame to lay out before find() can
+  // scroll accurately, so defer into requestAnimationFrame.
+  React.useEffect(() => {
+    if (!isOpen || !focusField || mode !== 'JSON') return;
+    const id = requestAnimationFrame(() => {
+      // Quote-prefixed key match so "field" matches a JSON key, not a value
+      // string that happens to contain the same text.
+      const result = editorRef.current?.find(`"${focusField}":`);
+      // find() scrolls the match to the nearest edge — which for a long doc
+      // typically lands the match at the bottom. Re-anchor to the top with a
+      // small margin so the focused field acts like a header, leaving a few
+      // lines of context above it.
+      if (result && result.count > 0) {
+        editorRef.current?.scrollSelectionToTop(48);
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isOpen, focusField, renderKey, mode]);
 
   // Tree -> JSON remounts the editor, which reapplies initialJSONFoldAll;
   // resync the toggle state so the button label matches the editor's

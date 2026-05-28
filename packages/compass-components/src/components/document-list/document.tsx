@@ -86,6 +86,10 @@ const HadronDocument: React.FunctionComponent<{
   onUpdateQuery?: (field: string, value: unknown) => void;
   query?: Record<string, unknown>;
   className?: string;
+  // Per-field wrench. When set, each top-level visible field shows a wrench on
+  // hover that calls back with the field key — used by document-list in
+  // projection mode so the row-level wrench is replaced by per-field ones.
+  onOpenFieldUpdateModal?: (fieldPath: string) => void;
 }> = ({
   value: document,
   editable = false,
@@ -95,6 +99,7 @@ const HadronDocument: React.FunctionComponent<{
   onUpdateQuery,
   query,
   className = '',
+  onOpenFieldUpdateModal,
 }) => {
   const { elements, visibleElements } = useHadronDocument(document);
   const [autoFocus, setAutoFocus] = useState<{
@@ -155,6 +160,7 @@ const HadronDocument: React.FunctionComponent<{
                 extraGutterWidth={extraGutterWidth}
                 onUpdateQuery={onUpdateQuery}
                 query={query}
+                onOpenFieldUpdateModal={onOpenFieldUpdateModal}
               ></HadronElement>
             );
           })}

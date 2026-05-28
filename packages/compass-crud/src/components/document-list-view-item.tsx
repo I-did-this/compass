@@ -14,6 +14,7 @@ export type DocumentListViewItemProps = {
   docRef: React.Ref<HTMLDivElement>;
   docIndex: number;
   isEditable: boolean;
+  hasProjection?: boolean;
   isTimeSeries?: boolean;
   scrollTriggerRef?: React.Ref<HTMLDivElement>;
 } & Pick<
@@ -31,6 +32,7 @@ const DocumentListViewItem: React.FC<DocumentListViewItemProps> = ({
   docRef,
   docIndex,
   isEditable,
+  hasProjection,
   isTimeSeries,
   scrollTriggerRef,
   copyToClipboard,
@@ -72,6 +74,7 @@ const DocumentListViewItem: React.FC<DocumentListViewItemProps> = ({
         query={queryBarQuery.filter}
         onUpdateQuery={handleAddToQuery}
         editable={isEditable}
+        hasProjection={hasProjection}
         isTimeSeries={isTimeSeries}
         copyToClipboard={copyToClipboard}
         removeDocument={removeDocument}

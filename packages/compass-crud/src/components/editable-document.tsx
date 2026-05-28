@@ -14,6 +14,16 @@ const documentElementsContainerStyles = css({
 
 export type EditableDocumentProps = {
   doc: Document;
+  // When false, the component is rendered solely to host the wrench (Update
+  // Document modal) action — pencil/clone/trash inline actions are suppressed.
+  // This is used when a projection is active: inline editing of a partial doc
+  // is unsafe, but the modal refetches the full doc and can still update.
+  editable?: boolean;
+  // When true, the row-level wrench is suppressed and a per-field wrench is
+  // rendered on hover inside each top-level field row instead (handled by
+  // DocumentList.Document via onOpenFieldUpdateModal). The store action used
+  // by the field wrench scrolls the modal to that field.
+  hasProjection?: boolean;
   removeDocument?: CrudActions['removeDocument'];
   replaceDocument?: CrudActions['replaceDocument'];
   updateDocument?: CrudActions['updateDocument'];
@@ -208,8 +218,13 @@ class EditableDocument extends React.Component<
 
   handleOpenUpdateModal() {
     this.suppressEditingStartedNotice = true;
-    this.props.openUpdateDocumentModal?.(this.props.doc);
+    void this.props.openUpdateDocumentModal?.(this.props.doc);
   }
+
+  handleOpenFieldUpdateModal = (fieldPath: string) => {
+    this.suppressEditingStartedNotice = true;
+    void this.props.openUpdateDocumentModal?.(this.props.doc, fieldPath);
+  };
 
   /**
    * Update state when editing starts
@@ -236,13 +251,29 @@ class EditableDocument extends React.Component<
    */
   renderActions() {
     if (!this.state.editing && !this.state.deleting) {
+      // editable defaults to true for backwards compatibility — explicit false
+      // means the row is rendered only to host the wrench (e.g. projection
+      // active), so inline pencil/clone/trash are suppressed.
+      const inlineEditable = this.props.editable !== false;
+      // In projection mode the wrench moves onto each field row (rendered by
+      // HadronElement via onOpenFieldUpdateModal), so suppress the row-corner
+      // wrench to avoid the two competing for the same action.
+      const canOpenUpdateModal =
+        Boolean(this.props.openUpdateDocumentModal) &&
+        !this.props.hasProjection;
       return (
         <DocumentList.DocumentActionsGroup
-          onEdit={this.handleStartEditing.bind(this)}
-          onOpenUpdateModal={this.handleOpenUpdateModal.bind(this)}
+          onEdit={
+            inlineEditable ? this.handleStartEditing.bind(this) : undefined
+          }
+          onOpenUpdateModal={
+            canOpenUpdateModal
+              ? this.handleOpenUpdateModal.bind(this)
+              : undefined
+          }
           onCopy={this.handleCopy.bind(this)}
-          onRemove={this.handleDelete.bind(this)}
-          onClone={this.handleClone.bind(this)}
+          onRemove={inlineEditable ? this.handleDelete.bind(this) : undefined}
+          onClone={inlineEditable ? this.handleClone.bind(this) : undefined}
           onExpand={this.handleExpandAll.bind(this)}
           expanded={this.state.expanded}
           insights={
@@ -262,6 +293,11 @@ class EditableDocument extends React.Component<
    * @returns {Array} The elements.
    */
   renderElements() {
+    // In projection mode, wire the per-field wrench. Only enable when the
+    // user actually has the update modal available (i.e. write-capable) —
+    // otherwise the field rows would surface an action that does nothing.
+    const fieldWrenchEnabled =
+      this.props.hasProjection && !!this.props.openUpdateDocumentModal;
     return (
       <DocumentList.Document
         value={this.props.doc}
@@ -270,6 +306,9 @@ class EditableDocument extends React.Component<
         onEditStart={this.handleStartEditing.bind(this)}
         onUpdateQuery={this.props.onUpdateQuery}
         query={this.props.query}
+        onOpenFieldUpdateModal={
+          fieldWrenchEnabled ? this.handleOpenFieldUpdateModal : undefined
+        }
       />
     );
   }

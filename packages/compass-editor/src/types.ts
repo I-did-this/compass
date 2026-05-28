@@ -40,6 +40,14 @@ export type EditorRef = {
   findPrevious: () => EditorSearchResult;
   /** Clears the active search term. */
   clearSearch: () => void;
+  /**
+   * Scrolls the current selection to near the top of the viewport, leaving a
+   * small margin so the focused line isn't flush against the top edge. Used
+   * by callers (e.g. the Update Document modal opened from a per-field
+   * wrench) that want the matched line presented as a header rather than
+   * centered in the viewport.
+   */
+  scrollSelectionToTop: (topMarginPx?: number) => boolean;
   readonly editorContents: string | null;
   readonly editor: EditorView | null;
 };

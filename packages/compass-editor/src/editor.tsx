@@ -845,6 +845,20 @@ const BaseEditor = React.forwardRef<EditorRef, EditorProps>(function BaseEditor(
           }
           clearSearchTerm(editorViewRef.current);
         },
+        scrollSelectionToTop(topMarginPx = 32) {
+          const view = editorViewRef.current;
+          if (!view) {
+            return false;
+          }
+          const pos = view.state.selection.main.head;
+          view.dispatch({
+            effects: EditorView.scrollIntoView(pos, {
+              y: 'start',
+              yMargin: topMarginPx,
+            }),
+          });
+          return true;
+        },
         get editorContents() {
           if (!editorViewRef.current) {
             return null;
@@ -1531,6 +1545,11 @@ const MultilineEditor = React.forwardRef<EditorRef, MultilineEditorProps>(
           },
           clearSearch() {
             editorRef.current?.clearSearch();
+          },
+          scrollSelectionToTop(topMarginPx?: number) {
+            return (
+              editorRef.current?.scrollSelectionToTop(topMarginPx) ?? false
+            );
           },
           get editorContents() {
             return editorRef.current?.editorContents ?? null;
