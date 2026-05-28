@@ -319,6 +319,29 @@ const elementType = css({
   marginLeft: spacing[100],
 });
 
+// Field-level wrench: pinned at the row's right edge, hover-revealed via the
+// same data-attribute trick the other action groups use. Sits in line with
+// the row content rather than inside the element-actions column on the left.
+const fieldWrenchSlot = css({
+  flex: 'none',
+  marginLeft: spacing[100],
+  display: 'flex',
+  alignItems: 'center',
+});
+
+const fieldWrenchButton = css({
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  cursor: 'pointer',
+  display: 'none',
+  '[data-document-element="true"]:hover &, [data-document-element="true"]:focus-within &':
+    {
+      display: 'inline-flex',
+    },
+});
+
 const actions = css({
   display: 'none',
 });
@@ -425,6 +448,10 @@ export const HadronElement: React.FunctionComponent<{
   extraGutterWidth?: number;
   onUpdateQuery?: (field: string, value: unknown) => void;
   query?: Record<string, unknown>;
+  // Opens the Update Document modal focused on this field. Set by the
+  // document-list view when a projection is active so the wrench moves from
+  // the row corner onto each visible field row.
+  onOpenFieldUpdateModal?: (fieldPath: string) => void;
 }> = ({
   value: element,
   editable,
@@ -435,6 +462,7 @@ export const HadronElement: React.FunctionComponent<{
   extraGutterWidth = 0,
   onUpdateQuery,
   query,
+  onOpenFieldUpdateModal,
 }) => {
   const darkMode = useDarkMode();
   const autoFocus = useAutoFocusContext();
@@ -794,6 +822,26 @@ export const HadronElement: React.FunctionComponent<{
             ></TypeEditor>
           </div>
         )}
+        {/* Per-field wrench, shown only at the top level in projection mode.
+            Nested fields share the wrench of their projected ancestor — the
+            modal scrolls to the top-level key and the user navigates from there. */}
+        {onOpenFieldUpdateModal && level === 0 && !editingEnabled && (
+          <div className={fieldWrenchSlot}>
+            <button
+              type="button"
+              className={fieldWrenchButton}
+              aria-label={`Update document focused on ${key.value}`}
+              title={`Update document (focus ${key.value})`}
+              data-testid="hadron-document-element-update-field"
+              onClick={(evt) => {
+                evt.stopPropagation();
+                onOpenFieldUpdateModal(key.value);
+              }}
+            >
+              <Icon size="small" glyph="Wrench" />
+            </button>
+          </div>
+        )}
       </div>
       {expandable && expanded && (
         <>
@@ -810,6 +858,7 @@ export const HadronElement: React.FunctionComponent<{
                 extraGutterWidth={extraGutterWidth}
                 onUpdateQuery={onUpdateQuery}
                 query={query}
+                onOpenFieldUpdateModal={onOpenFieldUpdateModal}
               ></HadronElement>
             );
           })}

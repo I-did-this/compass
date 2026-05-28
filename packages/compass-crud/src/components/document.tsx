@@ -9,6 +9,10 @@ import type { BSONObject } from '../stores/crud-store';
 export type DocumentProps = {
   doc: HadronDocument | BSONObject;
   editable: boolean;
+  // When true, a query projection is active, so the list view should show a
+  // per-field wrench instead of the row-level one (which would target only
+  // the projected partial view).
+  hasProjection?: boolean;
   isTimeSeries?: boolean;
   onUpdateQuery?: (field: string, value: unknown) => void;
   query?: BSONObject;
@@ -21,6 +25,7 @@ const Document = (props: DocumentProps) => {
     isTimeSeries,
     copyToClipboard,
     openInsertDocumentDialog,
+    openUpdateDocumentModal,
     doc: _doc,
     onUpdateQuery,
     query,
@@ -49,7 +54,10 @@ const Document = (props: DocumentProps) => {
     );
   }
 
-  if (editable) {
+  // EditableDocument also hosts the wrench (Update Document modal) action, so
+  // render it when either inline editing is allowed OR only the wrench is
+  // available (e.g. a projection is active but the user can still update).
+  if (editable || openUpdateDocumentModal) {
     return (
       <EditableDocument
         {...props}

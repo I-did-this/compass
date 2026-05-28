@@ -94,7 +94,7 @@ export type CrudActions = {
   updateDocument(doc: Document): Promise<void>;
   removeDocument(doc: Document): Promise<void>;
   replaceDocument(doc: Document): Promise<void>;
-  openUpdateDocumentModal(doc: Document): void;
+  openUpdateDocumentModal(doc: Document, focusField?: string): Promise<void>;
   closeUpdateDocumentModal(): void;
   openInsertDocumentDialog(doc: BSONObject, cloned: boolean): Promise<void>;
   copyToClipboard(doc: Document): void; //XXX
@@ -334,6 +334,9 @@ export type BulkDeleteState = {
 export type UpdateDocumentModalState = {
   isOpen: boolean;
   doc: Document | null;
+  // Top-level field key the modal should scroll to on open. Set by the
+  // per-field wrench in projection mode; undefined for the row-level wrench.
+  focusField?: string;
 };
 
 type CrudState = {
@@ -458,7 +461,7 @@ class CrudStoreImpl
       insert: this.getInitialInsertState(),
       bulkUpdate: this.getInitialBulkUpdateState(),
       bulkDelete: this.getInitialBulkDeleteState(),
-      updateDocumentModal: { isOpen: false, doc: null },
+      updateDocumentModal: { isOpen: false, doc: null, focusField: undefined },
       table: this.getInitialTableState(),
       isDataLake,
       isReadonly,
@@ -994,10 +997,36 @@ class CrudStoreImpl
    *
    * @param {Document} doc - The hadron document to edit.
    */
-  openUpdateDocumentModal(doc: Document) {
-    doc.startEditing();
+  async openUpdateDocumentModal(doc: Document, focusField?: string) {
+    // When the current query has a projection, `doc` only contains the
+    // projected fields. JSON-mode Update calls replaceDocument(), which would
+    // overwrite the server document with this partial payload and silently
+    // drop every unprojected field. Refetch the full document by _id so the
+    // modal always edits the complete document.
+    const query = this.queryBar.getLastAppliedQuery('crud');
+    const hasProjection = !isEmpty(query?.project);
+    let docToEdit: Document = doc;
+    if (hasProjection) {
+      const id = doc.getId();
+      if (id !== undefined) {
+        try {
+          const [fullDoc] = await this.dataService.find(
+            this.state.ns,
+            { _id: id as any },
+            { limit: 1 }
+          );
+          if (fullDoc) {
+            docToEdit = new HadronDocument(fullDoc);
+          }
+        } catch {
+          // Fall through with the original (projected) doc — better to let the
+          // user open the modal and see what they have than to silently fail.
+        }
+      }
+    }
+    docToEdit.startEditing();
     this.setState({
-      updateDocumentModal: { isOpen: true, doc },
+      updateDocumentModal: { isOpen: true, doc: docToEdit, focusField },
     });
   }
 
@@ -1013,7 +1042,7 @@ class CrudStoreImpl
       doc.finishEditing();
     }
     this.setState({
-      updateDocumentModal: { isOpen: false, doc: null },
+      updateDocumentModal: { isOpen: false, doc: null, focusField: undefined },
     });
   }
 

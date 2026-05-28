@@ -394,11 +394,21 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
     'legacyUUIDDisplayEncoding',
   ]);
 
-  const isEditable =
-    !preferencesReadOnly &&
-    !store.state.isDataLake &&
-    !store.state.isReadonly &&
-    Object.keys(query.project ?? {}).length === 0;
+  // Write-capable: this connection/collection isn't read-only and the user has
+  // write permission. Both isEditable (inline row actions) and
+  // canOpenUpdateModal (wrench → Update Document modal) require this.
+  const canWrite =
+    !preferencesReadOnly && !store.state.isDataLake && !store.state.isReadonly;
+
+  // Inline row actions (pencil/clone/trash) operate on the visible document,
+  // so a projection must not be active — the row is otherwise editing an
+  // incomplete view of the document.
+  const isEditable = canWrite && Object.keys(query.project ?? {}).length === 0;
+
+  // The Update Document modal is safe with a projection because the store
+  // refetches the full document by _id on open, so this is gated on
+  // write-capability only.
+  const canOpenUpdateModal = canWrite;
 
   const isEmpty = docs.length === 0;
 
@@ -510,6 +520,14 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
             <DocumentViewComponent
               {...props}
               isEditable={isEditable}
+              // Suppress the wrench action when the user/connection isn't
+              // write-capable; otherwise let it through even with a projection.
+              openUpdateDocumentModal={
+                canOpenUpdateModal ? props.openUpdateDocumentModal : undefined
+              }
+              // Projection state moves the wrench from the row corner onto
+              // each visible top-level field row in the list view.
+              hasProjection={Object.keys(query.project ?? {}).length > 0}
               outdated={outdated}
               query={query}
               initialScrollTop={currentViewInitialScrollTop}
@@ -532,6 +550,7 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
       isInitialFetch,
       isImportExportEnabled,
       isEditable,
+      canOpenUpdateModal,
       openImportFileDialog,
       props,
       outdated,
@@ -653,16 +672,6 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
             runBulkUpdate={runBulkUpdate}
             saveUpdateQuery={onSaveUpdateQuery}
           />
-          <UpdateDocumentModal
-            isOpen={store.state.updateDocumentModal.isOpen}
-            doc={store.state.updateDocumentModal.doc}
-            namespace={store.state.ns}
-            closeUpdateDocumentModal={store.closeUpdateDocumentModal.bind(
-              store
-            )}
-            replaceDocument={store.replaceDocument.bind(store)}
-            updateDocument={store.updateDocument.bind(store)}
-          />
           <BulkDeleteModal
             open={store.state.bulkDelete.status === 'open'}
             namespace={store.state.ns}
@@ -674,6 +683,17 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
             onExportToLanguage={onExportToLanguageDeleteQuery}
           />
         </>
+      )}
+      {canOpenUpdateModal && (
+        <UpdateDocumentModal
+          isOpen={store.state.updateDocumentModal.isOpen}
+          doc={store.state.updateDocumentModal.doc}
+          focusField={store.state.updateDocumentModal.focusField}
+          namespace={store.state.ns}
+          closeUpdateDocumentModal={store.closeUpdateDocumentModal.bind(store)}
+          replaceDocument={store.replaceDocument.bind(store)}
+          updateDocument={store.updateDocument.bind(store)}
+        />
       )}
     </div>
   );
