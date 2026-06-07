@@ -26,6 +26,10 @@ export type DocumentJsonViewProps = {
   docs: Document[];
   isEditable: boolean;
   className?: string;
+  // Accepted for prop-shape parity with DocumentListViewProps so the two views
+  // form a callable union when selected via a ternary (see
+  // compass-aggregations PipelineResultsList). The JSON view ignores it.
+  hasProjection?: boolean;
 } & Pick<
   JSONEditorProps,
   | 'isTimeSeries'
