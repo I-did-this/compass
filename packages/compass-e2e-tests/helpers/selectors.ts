@@ -624,8 +624,12 @@ export const ConfirmDeleteDocumentButton = `${DocumentFooter} [data-testid="dele
 export const JSONDocumentCard = '[data-testid="editable-json"]';
 export const JSONEditDocumentButton = `${JSONDocumentCard} [data-testid="editor-action-Edit"]`;
 export const ShowMoreFieldsButton = '[data-testid="show-more-fields-button"]';
-export const OpenBulkUpdateButton = '[data-testid="crud-update"]';
-export const OpenBulkDeleteButton = '[data-testid="crud-bulk-delete"]';
+export const BulkActionsButton =
+  '[data-testid="crud-bulk-actions-show-actions"]';
+export const OpenBulkUpdateButton =
+  '[data-testid="crud-bulk-actions-bulk-update-action"]';
+export const OpenBulkDeleteButton =
+  '[data-testid="crud-bulk-actions-bulk-delete-action"]';
 export const ErrorDetailsJson = '[data-testid="error-details-json"]';
 
 // Update Document modal (replaces the old inline document-editing flow).
@@ -937,9 +941,6 @@ export const CreateViewNameInput = `${CreateViewModal} [data-testid="create-view
 export const SavePipelineModal = '[data-testid="save-pipeline-modal"]';
 export const SavePipelineNameInput = '#save-pipeline-name';
 
-export const stageOperatorOptions = (stageIndex: number): string => {
-  return `${StageCardAtIndex(stageIndex)} [role="option"]`;
-};
 export const stageEditor = (stageIndex: number): string => {
   return `#aggregations-stage-editor-${stageIndex}`;
 };
