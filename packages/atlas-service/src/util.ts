@@ -106,9 +106,13 @@ export type AtlasServiceConfig = {
    */
   cloudBaseUrl: string;
   /**
+   * Atlas private API base url
+   */
+  atlasPrivateApiBaseUrl: string;
+  /**
    * Atlas admin API base url
    */
-  atlasApiBaseUrl: string;
+  atlasAdminApiBaseUrl: string;
   /**
    * Atlas OIDC config
    */
@@ -132,7 +136,7 @@ export type AtlasServiceConfig = {
 
 /**
  * Atlas service backend configurations.
- *  - atlas-local:             local mms backend         (cloud-local.mongodb.com)
+ *  - atlas-local:             local mms backend         (cloud-local.mmscloudteam.com)
  *  - atlas-dev:               dev mms backend           (cloud-dev.mongodb.com)
  *  - atlas-qa:                qa mms backend            (cloud-qa.mongodb.com)
  *  - atlas-staging:           staging mms backend       (cloud-stage.mongodb.com)
@@ -141,16 +145,17 @@ export type AtlasServiceConfig = {
 const config = Object.create({
   'atlas-local': {
     ccsBaseUrl: 'ws://localhost:61001/ws',
-    multiplexedWsBaseUrls: ['ws://cloud-local.mongodb.com/ccs'],
+    multiplexedWsBaseUrls: ['ws://cloud-local.mmscloudteam.com/ccs'],
     cloudBaseUrl: '',
-    atlasApiBaseUrl: 'http://cloud-local.mongodb.com/api/private',
+    atlasPrivateApiBaseUrl: 'http://cloud-local.mmscloudteam.com/api/private',
+    atlasAdminApiBaseUrl: 'https://cloud-local.mmscloudteam.com/api/atlas',
     atlasLogin: {
       clientId: '0oaq1le5jlzxCuTbu357',
       issuer: 'https://auth-qa.mongodb.com/oauth2/default',
     },
     authPortalUrl: 'https://account-local.mongodb.com/account/login',
     assistantApiBaseUrl: 'https://knowledge-dev.mongodb.com/api/v1',
-    userDataBaseUrl: 'https://cloud-local.mongodb.com/ui/userData',
+    userDataBaseUrl: 'https://cloud-local.mmscloudteam.com/ui/userData',
   },
   'atlas-dev': {
     ccsBaseUrl: '',
@@ -159,7 +164,8 @@ const config = Object.create({
       'wss://cluster-connection.cloud-dev.mongodb.com/ccs',
     ],
     cloudBaseUrl: '',
-    atlasApiBaseUrl: 'https://cloud-dev.mongodb.com/api/private',
+    atlasPrivateApiBaseUrl: 'https://cloud-dev.mongodb.com/api/private',
+    atlasAdminApiBaseUrl: 'https://cloud-dev.mongodb.com/api/atlas',
     atlasLogin: {
       clientId: '0oaq1le5jlzxCuTbu357',
       issuer: 'https://auth-qa.mongodb.com/oauth2/default',
@@ -175,7 +181,8 @@ const config = Object.create({
       'wss://cluster-connection.cloud-qa.mongodb.com/ccs',
     ],
     cloudBaseUrl: '',
-    atlasApiBaseUrl: 'https://cloud-qa.mongodb.com/api/private',
+    atlasPrivateApiBaseUrl: 'https://cloud-qa.mongodb.com/api/private',
+    atlasAdminApiBaseUrl: 'https://cloud-qa.mongodb.com/api/atlas',
     atlasLogin: {
       clientId: '0oaq1le5jlzxCuTbu357',
       issuer: 'https://auth-qa.mongodb.com/oauth2/default',
@@ -191,7 +198,8 @@ const config = Object.create({
       'wss://cluster-connection.cloud-stage.mongodb.com/ccs',
     ],
     cloudBaseUrl: '',
-    atlasApiBaseUrl: 'https://cloud-stage.mongodb.com/api/private',
+    atlasPrivateApiBaseUrl: 'https://cloud-stage.mongodb.com/api/private',
+    atlasAdminApiBaseUrl: 'https://cloud-stage.mongodb.com/api/atlas',
     atlasLogin: {
       clientId: '0oaq1le5jlzxCuTbu357',
       issuer: 'https://auth-qa.mongodb.com/oauth2/default',
@@ -207,7 +215,8 @@ const config = Object.create({
       'wss://cluster-connection.cloud.mongodb.com/ccs',
     ],
     cloudBaseUrl: '',
-    atlasApiBaseUrl: 'https://cloud.mongodb.com/api/private',
+    atlasPrivateApiBaseUrl: 'https://cloud.mongodb.com/api/private',
+    atlasAdminApiBaseUrl: 'https://cloud.mongodb.com/api/atlas',
     atlasLogin: {
       clientId: '0oajzdcznmE8GEyio297',
       issuer: 'https://auth.mongodb.com/oauth2/default',
@@ -223,7 +232,8 @@ export function getAtlasConfig(
 ) {
   const { atlasServiceBackendPreset } = preferences.getPreferences();
   const envConfig = {
-    atlasApiBaseUrl: process.env.COMPASS_ATLAS_SERVICE_UNAUTH_BASE_URL_OVERRIDE,
+    atlasPrivateApiBaseUrl:
+      process.env.COMPASS_ATLAS_SERVICE_UNAUTH_BASE_URL_OVERRIDE,
     cloudBaseUrl: process.env.COMPASS_CLOUD_BASE_URL_OVERRIDE,
     atlasLogin: {
       clientId: process.env.COMPASS_CLIENT_ID_OVERRIDE,

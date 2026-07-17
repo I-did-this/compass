@@ -4,6 +4,7 @@ import AppRegistry, {
 import {
   closeExplainPlanModal,
   openExplainPlanModal,
+  openExplainPlanForInterpret,
 } from './explain-plan-modal-store';
 import type { ExplainPlanModalServices } from './';
 import { activatePlugin } from './';
@@ -11,6 +12,8 @@ import { expect } from 'chai';
 import type { Document } from 'mongodb';
 import Sinon from 'sinon';
 import type { ConnectionInfoRef } from '@mongodb-js/compass-connections/provider';
+import * as compassComponents from '@mongodb-js/compass-components';
+import { waitFor } from '@mongodb-js/testing-library-compass';
 
 const localAppRegistry = new AppRegistry();
 
@@ -56,8 +59,20 @@ describe('explain plan modal store', function () {
   const sandbox = Sinon.createSandbox();
   let deactivatePlugin: () => void;
   let dataService: ExplainPlanModalServices['dataService'];
+  let interpretExplainPlanSpy: Sinon.SinonSpy<
+    [
+      {
+        namespace: string;
+        explainPlan: string;
+        operationType: 'query' | 'aggregation';
+      }
+    ]
+  >;
 
-  function configureStore(explainPlan: Document | Error = simplePlan) {
+  function configureStore(
+    explainPlan: Document | Error = simplePlan,
+    { isCancelError = false }: { isCancelError?: boolean } = {}
+  ) {
     const explain = sandbox.stub().callsFake(() => {
       if ((explainPlan as Error).name) {
         return Promise.reject(explainPlan);
@@ -69,9 +84,11 @@ describe('explain plan modal store', function () {
       explainAggregate: explain,
       explainFind: explain,
       isCancelError() {
-        return false;
+        return isCancelError;
       },
     };
+
+    interpretExplainPlanSpy = sandbox.spy() as typeof interpretExplainPlanSpy;
 
     const { store, deactivate } = activatePlugin(
       { namespace: 'test.test', isDataLake: false },
@@ -93,6 +110,11 @@ describe('explain plan modal store', function () {
             return { maxTimeMS: 0 };
           },
         } as any,
+        compassAssistant: {
+          interpretExplainPlan: interpretExplainPlanSpy,
+          interpretConnectionError: () => {},
+          getIsAssistantEnabled: () => true,
+        },
       },
       createActivateHelpers()
     );
@@ -201,5 +223,83 @@ describe('explain plan modal store', function () {
       })
     );
     expect(store.getState()).to.have.property('operationType', 'aggregation');
+  });
+
+  it('should call interpretExplainPlan when explain is opened for interpret', async function () {
+    const store = configureStore();
+    await store.dispatch(
+      openExplainPlanForInterpret({ query: { filter: { foo: 1 } } })
+    );
+    expect(interpretExplainPlanSpy).to.have.been.calledOnce;
+    expect(interpretExplainPlanSpy.firstCall.args[0]).to.have.property(
+      'operationType',
+      'query'
+    );
+    expect(interpretExplainPlanSpy.firstCall.args[0]).to.have.property(
+      'namespace',
+      'test.test'
+    );
+    expect(interpretExplainPlanSpy.firstCall.args[0].explainPlan).to.be.a(
+      'string'
+    );
+    expect(store.getState()).to.have.property('isModalOpen', false);
+  });
+
+  describe('openExplainPlanForInterpret loading events', function () {
+    let emitSpy: Sinon.SinonSpy;
+    let openToastStub: Sinon.SinonStub;
+
+    beforeEach(function () {
+      emitSpy = sandbox.spy(localAppRegistry, 'emit');
+      openToastStub = sandbox.stub();
+      sandbox.replaceGetter(
+        compassComponents,
+        'openToast',
+        () => openToastStub
+      );
+    });
+
+    afterEach(function () {
+      sandbox.restore();
+    });
+
+    it('emits loading and done events on success', async function () {
+      configureStore();
+      localAppRegistry.emit('open-explain-plan-for-interpret', {
+        query: { filter: {} },
+      });
+      await waitFor(() => {
+        expect(emitSpy.calledWith('explain-plan-interpret-started')).to.be.true;
+        expect(emitSpy.calledWith('explain-plan-interpret-finished')).to.be
+          .true;
+      });
+    });
+
+    it('emits done and shows toast when fetch fails', async function () {
+      configureStore(new Error('network error'));
+      localAppRegistry.emit('open-explain-plan-for-interpret', {
+        query: { filter: {} },
+      });
+      await waitFor(() => {
+        expect(emitSpy.calledWith('explain-plan-interpret-finished')).to.be
+          .true;
+        expect(openToastStub.calledOnce).to.be.true;
+        expect(openToastStub.firstCall.args[0]).to.equal(
+          'explain-interpret-error'
+        );
+      });
+    });
+
+    it('emits done but shows no toast on cancellation', async function () {
+      configureStore(new Error('cancel'), { isCancelError: true });
+      localAppRegistry.emit('open-explain-plan-for-interpret', {
+        query: { filter: {} },
+      });
+      await waitFor(() => {
+        expect(emitSpy.calledWith('explain-plan-interpret-finished')).to.be
+          .true;
+        expect(openToastStub.called).to.be.false;
+      });
+    });
   });
 });

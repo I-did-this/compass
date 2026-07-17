@@ -224,7 +224,7 @@ const aiURLConfig = {
   // we cannot currently call that from the Atlas UI. Pending CLOUDP-251201
   // NOTE: The unauthenticated endpoints are also rate limited by IP address
   // rather than by logged in user.
-  'admin-api': {
+  'private-api': {
     aggregation: 'unauth/ai/api/v1/mql-aggregation',
     query: 'unauth/ai/api/v1/mql-query',
   },
@@ -288,9 +288,7 @@ async function getHashedActiveUserId(
 type AIResourceType = 'query' | 'aggregation';
 
 export class AtlasAiService {
-  private initPromise: Promise<void> | null = null;
-
-  private apiURLPreset: 'admin-api' | 'cloud';
+  private apiURLPreset: 'private-api' | 'cloud';
   private atlasService: AtlasService;
   private preferences: PreferencesAccess;
   private logger: Logger;
@@ -304,7 +302,7 @@ export class AtlasAiService {
     preferences,
     logger,
   }: {
-    apiURLPreset: 'admin-api' | 'cloud';
+    apiURLPreset: 'private-api' | 'cloud';
     atlasService: AtlasService;
     preferences: PreferencesAccess;
     logger: Logger;
@@ -313,7 +311,6 @@ export class AtlasAiService {
     this.atlasService = atlasService;
     this.preferences = preferences;
     this.logger = logger;
-    this.initPromise = this.setupAIAccess();
 
     const PLACEHOLDER_BASE_URL =
       'http://PLACEHOLDER_BASE_URL_TO_BE_REPLACED.invalid';
@@ -329,7 +326,7 @@ export class AtlasAiService {
           PLACEHOLDER_BASE_URL,
           this.atlasService.assistantApiEndpoint()
         );
-        return this.atlasService.authenticatedFetch(uri, init);
+        return this.atlasService.fetch(uri, init);
       },
     }).responses(AI_MODEL_SLIM_VERSION);
 
@@ -341,7 +338,7 @@ export class AtlasAiService {
           PLACEHOLDER_BASE_URL,
           this.atlasService.assistantApiEndpoint()
         );
-        return this.atlasService.authenticatedFetch(uri, init);
+        return this.atlasService.fetch(uri, init);
       },
     }).responses(AI_MODEL_SLIM_VERSION);
   }
@@ -359,8 +356,8 @@ export class AtlasAiService {
       );
     }
 
-    const urlPath = aiURLConfig['admin-api'][resourceType];
-    return this.atlasService.adminApiEndpoint(urlPath);
+    const urlPath = aiURLConfig['private-api'][resourceType];
+    return this.atlasService.privateApiEndpoint(urlPath);
   }
 
   private throwIfAINotEnabled() {
@@ -372,16 +369,6 @@ export class AtlasAiService {
         "Compass' AI functionality is not currently enabled. Please try again later."
       );
     }
-  }
-
-  async setupAIAccess(): Promise<void> {
-    // We default GEN_AI_ACCESS on for everyone. Down the line if/when
-    // we add more features with partial rollout, we'll fetch access here.
-    await this.preferences.savePreferences({
-      cloudFeatureRolloutAccess: {
-        GEN_AI_COMPASS: true,
-      },
-    });
   }
 
   async ensureAiFeatureAccess({ signal }: { signal?: AbortSignal } = {}) {
@@ -405,7 +392,6 @@ export class AtlasAiService {
     },
     validationFn: (res: any) => asserts res is T
   ): Promise<T> => {
-    await this.initPromise;
     this.throwIfAINotEnabled();
 
     const { signal, requestId, ...rest } = input;
@@ -430,7 +416,7 @@ export class AtlasAiService {
       }
     );
 
-    const res = await this.atlasService.authenticatedFetch(url, {
+    const res = await this.atlasService.fetch(url, {
       signal,
       method: 'POST',
       body: msgBody,
@@ -527,7 +513,6 @@ export class AtlasAiService {
     input: MockDataSchemaRequest,
     connectionInfo: ConnectionInfo
   ): Promise<MockDataSchemaToolOutput> {
-    await this.initPromise;
     this.throwIfAINotEnabled();
 
     // Mock data schema generation requires cloud API (atlas metadata)
@@ -671,7 +656,7 @@ export class AtlasAiService {
   async optIntoGenAIFeatures() {
     if (this.apiURLPreset === 'cloud') {
       // Performs a post request to Atlas to set the user opt in preference to true.
-      await this.atlasService.authenticatedFetch(
+      await this.atlasService.fetch(
         this.atlasService.cloudEndpoint(
           'settings/optInDataExplorerGenAIFeatures'
         ),

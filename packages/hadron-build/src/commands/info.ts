@@ -22,12 +22,13 @@ function buildInfoCommandOptions(yargs: Argv) {
     },
     flatten: {
       description: 'Flatten the config object into dot notation',
-      boolean: true,
+      type: 'boolean' as const,
       default: false,
     },
     dir: {
       description: 'Project root directory',
       default: process.cwd(),
+      type: 'string' as const,
     },
     version: {
       description: 'Target version',
@@ -48,6 +49,11 @@ function buildInfoCommandOptions(yargs: Argv) {
       description: 'Output file path',
       type: 'string' as const,
       default: undefined,
+    },
+    print: {
+      description: 'Print output to console',
+      boolean: true,
+      default: true,
     },
   });
 }
@@ -78,7 +84,7 @@ function toTable(target: Record<string, unknown>): string {
 
 export const runInfoCommand = async (
   argv: ExcludeYargsRequiredArgs<InfoArgv>
-): Promise<void> => {
+): Promise<string> => {
   // TODO: This info is only used for expansions.yml in evergreen.
   // Only write what we need and use a better way to get this done.
   let target: Record<string, unknown> = new Target(argv.dir, {
@@ -103,10 +109,11 @@ export const runInfoCommand = async (
 
   if (argv.out) {
     await fs.writeFile(path.resolve(process.cwd(), argv.out), output);
-  } else {
+  } else if (argv.print) {
     // eslint-disable-next-line no-console
     console.log(output);
   }
+  return output;
 };
 
 export const infoCommand: CommandModule<unknown, InfoArgv> = {

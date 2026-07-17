@@ -1,6 +1,6 @@
 import React from 'react';
 import { z } from '@mongodb-js/compass-user-data';
-import type { AtlasCloudFeatureFlags, FeatureFlags } from './feature-flags';
+import type { FeatureFlags } from './feature-flags';
 import { FEATURE_FLAG_PREFERENCES } from './feature-flags';
 import { parseRecord } from './parse-record';
 import {
@@ -119,9 +119,6 @@ export type UserConfigurablePreferences = PermanentFeatureFlags &
 export type InternalUserPreferences = {
   showedNetworkOptIn: boolean; // Has the settings dialog been shown before.
   id: string;
-  cloudFeatureRolloutAccess?: {
-    GEN_AI_COMPASS?: boolean;
-  };
   lastKnownVersion: string;
   highestInstalledVersion?: string;
   currentUserId?: string;
@@ -208,14 +205,16 @@ export type PreferenceState =
   | 'set-global' // Can be set directly or derived from a preference set via global config.
   | 'hardcoded'
   | 'derived' // Derived from a preference set by a user via setting UI.
+  | 'set-cloud-org' // Set by the mms backend for the user's Atlas organization.
+  | 'set-cloud-project' // Set by the mms backend for the user's Atlas project.
+  | 'set-cloud-user' // Set by the mms backend for the user's Atlas user.
   | undefined;
 
 export type DeriveValueFunction<T> = (
   /** Get a preference's value from the current set of preferences */
   getValue: <K extends keyof AllPreferences>(key: K) => AllPreferences[K],
   /** Get a preference's state from the current set of preferences */
-  getState: <K extends keyof AllPreferences>(key: K) => PreferenceState,
-  atlasCloudFeatureFlags: Partial<AtlasCloudFeatureFlags>
+  getState: <K extends keyof AllPreferences>(key: K) => PreferenceState
 ) => { value: T; state: PreferenceState };
 
 type SecretsConfiguration<T> = {
@@ -514,23 +513,6 @@ export const storedUserPreferencesProps: Required<{
     description: null,
     validator: z.boolean().default(true),
     type: 'boolean',
-  },
-  /**
-   * Enable/disable the AI services. This is currently set
-   * in the atlas-service initialization where we make a request to the
-   * ai endpoint to check what's enabled for the user (incremental rollout).
-   */
-  cloudFeatureRolloutAccess: {
-    ui: false,
-    cli: false,
-    global: false,
-    description: null,
-    validator: z
-      .object({
-        GEN_AI_COMPASS: z.boolean().optional(),
-      })
-      .optional(),
-    type: 'object',
   },
   /**
    * Master switch to disable all network traffic

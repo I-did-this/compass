@@ -530,6 +530,9 @@ interface StartCompassOptions {
   wrapBinary?: (binary: string) => Promise<string> | string;
   dangerouslySkipSharedConfigWaitFor?: boolean;
   onBeforeNavigate?: (browser: CompassBrowser) => Promise<void> | void;
+  // Skips the shared config setup, which sets preferences. Used for tests that
+  // intentionally leave the app in a state where preferences never load.
+  skipSharedConfigOnStart?: boolean;
 }
 
 let defaultUserDataDir: string | undefined;
@@ -1165,15 +1168,31 @@ export async function init(
       await browser.navigateTo(
         `${urls.cloudUrl}/v2/${context.atlasCloudProjectId}#/explorer`
       );
+
+      // Hide the Intercom widget so its iframes can't intercept clicks.
+      await browser.execute(() => {
+        const style = globalThis.document.createElement('style');
+        style.textContent = `
+          [class*="intercom"],
+          iframe[name*="intercom"],
+          iframe[data-intercom-frame] {
+            display: none !important;
+            pointer-events: none !important;
+          }
+        `;
+        globalThis.document.head.appendChild(style);
+      });
     } else {
       await browser.navigateTo(context.sandboxUrl);
     }
   }
 
-  await setSharedConfigOnStart(
-    browser,
-    opts.dangerouslySkipSharedConfigWaitFor
-  );
+  if (!opts.skipSharedConfigOnStart) {
+    await setSharedConfigOnStart(
+      browser,
+      opts.dangerouslySkipSharedConfigWaitFor
+    );
+  }
 
   // Matches Compass desktop defaults
   const defaultWindowWidth = 1432;

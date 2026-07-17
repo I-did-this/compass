@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { connect } from 'react-redux';
 import {
   Button,
+  DropdownMenuButton,
+  type MenuAction,
   OptionsToggle,
   PerformanceSignals,
   SignalPopover,
+  SpinLoader,
   css,
   spacing,
 } from '@mongodb-js/compass-components';
@@ -12,7 +15,7 @@ import { AIExperienceEntry } from '@mongodb-js/compass-generative-ai/provider';
 import type { RootState } from '../../../modules';
 import { runAggregation } from '../../../modules/aggregation';
 import { updateView } from '../../../modules/update-view';
-import { explainAggregation } from '../../../modules/explain';
+import { explainAggregation, type ExplainMode } from '../../../modules/explain';
 import {
   getIsPipelineInvalidFromBuilderState,
   getPipelineStageOperatorsFromBuilderState,
@@ -24,6 +27,7 @@ import {
 } from 'compass-preferences-model/provider';
 import { showInput as showAIInput } from '../../../modules/pipeline-builder/pipeline-ai';
 import { useAssistantActions } from '@mongodb-js/compass-assistant';
+import { useSearchActivationProgramP2 } from '@mongodb-js/compass-telemetry/provider';
 
 const containerStyles = css({
   display: 'flex',
@@ -42,7 +46,7 @@ type PipelineActionsProps = {
 
   showExplainButton?: boolean;
   isExplainButtonDisabled?: boolean;
-  onExplainAggregation: () => void;
+  onExplainAggregation: (mode: ExplainMode) => void;
 
   isOptionsVisible?: boolean;
   onToggleOptions: () => void;
@@ -53,6 +57,7 @@ type PipelineActionsProps = {
   showCollectionScanInsight?: boolean;
   onCollectionScanInsightActionButtonClick: () => void;
 
+  isInterpretLoading?: boolean;
   stages: string[];
 };
 
@@ -72,6 +77,7 @@ export const PipelineActions: React.FunctionComponent<PipelineActionsProps> = ({
   onExplainAggregation,
   showCollectionScanInsight,
   onCollectionScanInsightActionButtonClick,
+  isInterpretLoading = false,
   stages,
 }) => {
   const {
@@ -83,8 +89,59 @@ export const PipelineActions: React.FunctionComponent<PipelineActionsProps> = ({
     'enableAggregationBuilderExtraOptions',
     'showInsights',
   ]);
+  const {
+    enableSearchActivationProgramP2,
+    isSearchActivationProgramP2Loading,
+  } = useSearchActivationProgramP2({ trackIsInSample: true });
   const isAIFeatureEnabled = useIsAIFeatureEnabled();
-  const { tellMoreAboutInsight } = useAssistantActions();
+  const { tellMoreAboutInsight, getIsAssistantEnabled } = useAssistantActions();
+  const isAssistantEnabled = getIsAssistantEnabled();
+
+  const hasSearchStage = stages.includes('$search');
+
+  const explainActions = useMemo(
+    (): MenuAction<ExplainMode>[] => [
+      {
+        action: 'interpret',
+        label: 'Interpret',
+        icon: isInterpretLoading ? (
+          <SpinLoader title="Loading interpret" />
+        ) : (
+          'Sparkle'
+        ),
+        isDisabled: !isAssistantEnabled || hasSearchStage || isInterpretLoading,
+        disabledDescription: isInterpretLoading
+          ? 'Interpret in progress'
+          : hasSearchStage
+          ? 'Not supported for this query'
+          : !isAssistantEnabled
+          ? 'Assistant is not available'
+          : undefined,
+      },
+      {
+        action: 'visual-tree',
+        label: 'Visual tree',
+        icon: 'Diagram',
+        isDisabled: hasSearchStage,
+        disabledDescription: hasSearchStage
+          ? 'Not supported for this query'
+          : undefined,
+      },
+      {
+        action: 'raw-output',
+        label: 'Raw output',
+        icon: 'CurlyBraces',
+      },
+    ],
+    [isAssistantEnabled, hasSearchStage, isInterpretLoading]
+  );
+
+  const onExplainAction = useCallback(
+    (action: ExplainMode) => {
+      onExplainAggregation(action);
+    },
+    [onExplainAggregation]
+  );
 
   return (
     <div className={containerStyles}>
@@ -129,18 +186,44 @@ export const PipelineActions: React.FunctionComponent<PipelineActionsProps> = ({
           Update view
         </Button>
       )}
-      {showExplainButton && (
-        <Button
-          aria-label="Explain aggregation"
-          data-testid="pipeline-toolbar-explain-aggregation-button"
-          variant="default"
-          size="small"
-          onClick={onExplainAggregation}
-          disabled={isExplainButtonDisabled}
-        >
-          Explain
-        </Button>
-      )}
+      {showExplainButton &&
+        (isSearchActivationProgramP2Loading ? (
+          <Button
+            aria-label="Explain aggregation"
+            data-testid="pipeline-toolbar-explain-aggregation-button-loading"
+            variant="default"
+            size="small"
+            disabled
+            leftGlyph={<SpinLoader />}
+          >
+            Explain
+          </Button>
+        ) : enableSearchActivationProgramP2 ? (
+          <DropdownMenuButton
+            data-testid="pipeline-toolbar-explain-aggregation-dropdown-button"
+            buttonText="Explain"
+            buttonProps={{
+              size: 'small',
+              variant: 'default',
+              disabled: isExplainButtonDisabled,
+              leftGlyph: isInterpretLoading ? <SpinLoader /> : undefined,
+            }}
+            actions={explainActions}
+            onAction={onExplainAction}
+            hideOnNarrow={false}
+          />
+        ) : (
+          <Button
+            aria-label="Explain aggregation"
+            data-testid="pipeline-toolbar-explain-aggregation-button"
+            variant="default"
+            size="small"
+            onClick={() => onExplainAggregation('visual-tree')}
+            disabled={isExplainButtonDisabled}
+          >
+            Explain
+          </Button>
+        ))}
       {!showUpdateViewButton && showRunButton && (
         <Button
           aria-label="Run aggregation"
@@ -183,6 +266,7 @@ const mapState = (state: RootState) => {
     isUpdateViewButtonDisabled:
       !state.isModified || hasSyntaxErrors || isAIFetching,
     showCollectionScanInsight: state.insights.isCollectionScan,
+    isInterpretLoading: state.explain.isLoading,
     stages: resultPipeline,
   };
 };

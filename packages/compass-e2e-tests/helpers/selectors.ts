@@ -794,6 +794,17 @@ export const HadronDocumentRemoveElement =
   '[data-testid="hadron-document-remove"]';
 export const HadronDocumentElementDecryptedIcon =
   '[data-testid="hadron-document-element-decrypted-icon"]';
+export const hadronDocumentFieldRow = (name: string) => {
+  return `[data-field="${name}"]${HadronDocumentElement}`;
+};
+export const hadronDocumentAddFieldButton = (name: string) => {
+  return `${hadronDocumentFieldRow(
+    name
+  )} ${HadronDocumentAddElementMenuButton}`;
+};
+export const hadronDocumentExpandRowButton = (name: string) => {
+  return `${hadronDocumentFieldRow(name)} [aria-label="Expand field items"]`;
+};
 
 // Document list view
 
@@ -925,8 +936,15 @@ export const AggregationSavedPipelineCardDeleteButton = (
   )} [data-testid="saved-pipeline-card-delete-action"]`;
 };
 
-export const AggregationExplainButton =
+export const AggregationExplainLegacyButton =
   '[data-testid="pipeline-toolbar-explain-aggregation-button"]';
+export const AggregationExplainDropdownButton =
+  '[data-testid="pipeline-toolbar-explain-aggregation-dropdown-button-show-actions"]';
+export const AggregationExplainDropdownVisualTreeAction =
+  '[data-testid="pipeline-toolbar-explain-aggregation-dropdown-button-visual-tree-action"]';
+export const AggregationExplainDropdownInterpretAction =
+  '[data-testid="pipeline-toolbar-explain-aggregation-dropdown-button-interpret-action"]';
+export const AggregationExplainButton = `${AggregationExplainLegacyButton}, ${AggregationExplainDropdownButton}`;
 export const AggregationExplainModal = '[data-testid="explain-plan-modal"]';
 export const ExplainPlanInterpretButton =
   '[data-testid="interpret-for-me-button"]';
@@ -1095,7 +1113,15 @@ export const SchemaFieldName = '[data-testid="schema-field-name"]';
 export const SchemaFieldTypeList = '[data-testid="schema-field-type-list"]';
 
 // Explain Plan modal
-export const ExecuteExplainButton = '[data-testid="query-bar-explain-button"]';
+export const ExecuteExplainLegacyButton =
+  '[data-testid="query-bar-explain-button"]';
+export const ExecuteExplainDropdownButton =
+  '[data-testid="query-bar-explain-dropdown-button-show-actions"]';
+export const ExecuteExplainDropdownVisualTreeAction =
+  '[data-testid="query-bar-explain-dropdown-button-visual-tree-action"]';
+export const ExecuteExplainDropdownInterpretAction =
+  '[data-testid="query-bar-explain-dropdown-button-interpret-action"]';
+export const ExecuteExplainButton = `${ExecuteExplainLegacyButton}, ${ExecuteExplainDropdownButton}`;
 export const ExplainLoader = '[data-testid="explain-plan-loading"]';
 export const ExplainSummary = '[data-testid="explain-plan-summary"]';
 export const ExplainStage = '[data-testid="explain-stage"]';
@@ -1117,9 +1143,11 @@ export const IndexList = '[data-testid="indexes-list"]';
 export const indexComponent = (name: string): string => {
   return `[data-testid="indexes-row-${name}"]`;
 };
+export const indexWithStatus = (name: string, status: 'building' | 'ready') => {
+  return `${indexComponent(name)} [data-testid="index-${status}"]`;
+};
 export const IndexFieldName = '[data-testid="indexes-name-field"]';
 export const IndexFieldType = '[data-testid="indexes-type-field"]';
-export const IndexPropertyInProgress = '[data-testid="index-in-progress"]';
 export const IndexToggleOptions =
   '[data-testid="create-index-modal-toggle-options"]';
 export const indexToggleOption = (fieldName: string) => {

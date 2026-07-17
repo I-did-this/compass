@@ -11,13 +11,31 @@ import { expect } from 'chai';
 import { spy } from 'sinon';
 import type { SinonSpy } from 'sinon';
 import ConnectedPipelineActions, { PipelineActions } from './pipeline-actions';
-import { renderWithStore } from '../../../../test/configure-store';
 import {
-  type PreferencesAccess,
+  renderWithStore,
+  wrapWithExperimentProvider,
+} from '../../../../test/configure-store';
+import { mockDataService } from '../../../../test/mocks/data-service';
+import {
   createSandboxFromDefaultPreferences,
+  type PreferencesAccess,
 } from 'compass-preferences-model';
-import { PreferencesProvider } from 'compass-preferences-model/provider';
 import { AIPipelineActionTypes } from '../../../modules/pipeline-builder/pipeline-ai';
+import {
+  ExperimentTestGroups,
+  type ExperimentTestGroup,
+} from '@mongodb-js/compass-telemetry';
+
+function renderPipelineActions(
+  props: React.ComponentProps<typeof PipelineActions>,
+  renderOptions?: Parameters<typeof render>[1],
+  experimentVariant: ExperimentTestGroup | null = ExperimentTestGroups.searchActivationProgramP2Variant
+) {
+  return render(<PipelineActions {...props} />, {
+    ...renderOptions,
+    experimentAssignment: experimentVariant,
+  });
+}
 
 describe('PipelineActions', function () {
   afterEach(cleanup);
@@ -32,22 +50,22 @@ describe('PipelineActions', function () {
       onToggleOptionsSpy = spy();
       onExplainAggregationSpy = spy();
 
-      render(
-        <PipelineActions
-          isOptionsVisible={true}
-          showAIEntry={false}
-          showRunButton={true}
-          showExplainButton={true}
-          onRunAggregation={onRunAggregationSpy}
-          onToggleOptions={onToggleOptionsSpy}
-          isExplainButtonDisabled={false}
-          onExplainAggregation={onExplainAggregationSpy}
-          onUpdateView={() => {}}
-          onCollectionScanInsightActionButtonClick={() => {}}
-          onShowAIInputClick={() => {}}
-          stages={[]}
-        />
-      );
+      renderPipelineActions({
+        isOptionsVisible: true,
+        showAIEntry: false,
+        showRunButton: true,
+        showExplainButton: true,
+        onRunAggregation: onRunAggregationSpy,
+        onToggleOptions: onToggleOptionsSpy,
+        isExplainButtonDisabled: false,
+        onExplainAggregation: () => {
+          onExplainAggregationSpy();
+        },
+        onUpdateView: () => {},
+        onCollectionScanInsightActionButtonClick: () => {},
+        onShowAIInputClick: () => {},
+        stages: [],
+      });
     });
 
     it('calls onRunAggregation callback on click', function () {
@@ -59,12 +77,14 @@ describe('PipelineActions', function () {
       expect(onRunAggregationSpy.calledOnce).to.be.true;
     });
 
-    it('calls onExplainAggregation on click', function () {
-      const button = screen.getByTestId(
-        'pipeline-toolbar-explain-aggregation-button'
+    it('calls onExplainAggregation when Visual tree is selected', async function () {
+      const trigger = screen.getByTestId(
+        'pipeline-toolbar-explain-aggregation-dropdown-button-show-actions'
       );
-      expect(button).to.exist;
-      userEvent.click(button);
+      expect(trigger).to.exist;
+      userEvent.click(trigger);
+      const visualTreeItem = await screen.findByText('Visual tree');
+      userEvent.click(visualTreeItem);
       expect(onExplainAggregationSpy.calledOnce).to.be.true;
     });
 
@@ -116,39 +136,108 @@ describe('PipelineActions', function () {
   });
 
   describe('extra options disabled', function () {
-    let preferences: PreferencesAccess;
     let onRunAggregationSpy: SinonSpy;
     let onToggleOptionsSpy: SinonSpy;
 
-    beforeEach(async function () {
-      preferences = await createSandboxFromDefaultPreferences();
-      await preferences.savePreferences({
-        enableAggregationBuilderExtraOptions: false,
-      });
+    beforeEach(function () {
       onRunAggregationSpy = spy();
       onToggleOptionsSpy = spy();
-      render(
-        <PreferencesProvider value={preferences}>
-          <PipelineActions
-            isOptionsVisible={false}
-            showAIEntry={false}
-            showRunButton={true}
-            showExplainButton={true}
-            onRunAggregation={onRunAggregationSpy}
-            onToggleOptions={onToggleOptionsSpy}
-            onUpdateView={() => {}}
-            onExplainAggregation={() => {}}
-            onCollectionScanInsightActionButtonClick={() => {}}
-            onShowAIInputClick={() => {}}
-            stages={[]}
-          />
-        </PreferencesProvider>
+      renderPipelineActions(
+        {
+          isOptionsVisible: false,
+          showAIEntry: false,
+          showRunButton: true,
+          showExplainButton: true,
+          onRunAggregation: onRunAggregationSpy,
+          onToggleOptions: onToggleOptionsSpy,
+          onUpdateView: () => {},
+          onExplainAggregation: () => {},
+          onCollectionScanInsightActionButtonClick: () => {},
+          onShowAIInputClick: () => {},
+          stages: [],
+        },
+        { preferences: { enableAggregationBuilderExtraOptions: false } }
       );
     });
 
     it('hides the extra options button when in Cloud mode', function () {
       expect(screen.queryByTestId('pipeline-toolbar-options-button')).to.not
         .exist;
+    });
+  });
+
+  describe('when not in the experiment variant', function () {
+    let onExplainAggregationSpy: SinonSpy;
+
+    beforeEach(function () {
+      onExplainAggregationSpy = spy();
+
+      renderPipelineActions(
+        {
+          isOptionsVisible: true,
+          showAIEntry: false,
+          showRunButton: true,
+          showExplainButton: true,
+          onRunAggregation: () => {},
+          onToggleOptions: () => {},
+          isExplainButtonDisabled: false,
+          onExplainAggregation: () => {
+            onExplainAggregationSpy();
+          },
+          onUpdateView: () => {},
+          onCollectionScanInsightActionButtonClick: () => {},
+          onShowAIInputClick: () => {},
+          stages: [],
+        },
+        undefined,
+        null
+      );
+    });
+
+    it('calls onExplainAggregation on click', function () {
+      const button = screen.getByTestId(
+        'pipeline-toolbar-explain-aggregation-button'
+      );
+      expect(button).to.exist;
+      userEvent.click(button);
+      expect(onExplainAggregationSpy.calledOnce).to.be.true;
+    });
+  });
+
+  describe('while the experiment assignment is loading', function () {
+    beforeEach(function () {
+      render(
+        <PipelineActions
+          isOptionsVisible={true}
+          showAIEntry={false}
+          showRunButton={true}
+          showExplainButton={true}
+          onRunAggregation={() => {}}
+          onToggleOptions={() => {}}
+          onExplainAggregation={() => {}}
+          onUpdateView={() => {}}
+          onCollectionScanInsightActionButtonClick={() => {}}
+          onShowAIInputClick={() => {}}
+          stages={[]}
+        />,
+        { experimentAssignmentLoading: true }
+      );
+    });
+
+    it('shows a disabled loading Explain button instead of either variant', function () {
+      const loadingButton = screen.getByTestId(
+        'pipeline-toolbar-explain-aggregation-button-loading'
+      );
+      expect(loadingButton).to.exist;
+      expect(loadingButton.getAttribute('aria-disabled')).to.equal('true');
+      expect(
+        screen.queryByTestId(
+          'pipeline-toolbar-explain-aggregation-dropdown-button-show-actions'
+        )
+      ).to.not.exist;
+      expect(
+        screen.queryByTestId('pipeline-toolbar-explain-aggregation-button')
+      ).to.not.exist;
     });
   });
 
@@ -159,23 +248,24 @@ describe('PipelineActions', function () {
     beforeEach(function () {
       onRunAggregationSpy = spy();
       onExplainAggregationSpy = spy();
-      render(
-        <PipelineActions
-          isExplainButtonDisabled={true}
-          isRunButtonDisabled={true}
-          isOptionsVisible={true}
-          showAIEntry={false}
-          showRunButton={true}
-          showExplainButton={true}
-          onRunAggregation={onRunAggregationSpy}
-          onToggleOptions={() => {}}
-          onExplainAggregation={onExplainAggregationSpy}
-          onUpdateView={() => {}}
-          onCollectionScanInsightActionButtonClick={() => {}}
-          onShowAIInputClick={() => {}}
-          stages={[]}
-        />
-      );
+
+      renderPipelineActions({
+        isExplainButtonDisabled: true,
+        isRunButtonDisabled: true,
+        isOptionsVisible: true,
+        showAIEntry: false,
+        showRunButton: true,
+        showExplainButton: true,
+        onRunAggregation: onRunAggregationSpy,
+        onToggleOptions: () => {},
+        onExplainAggregation: () => {
+          onExplainAggregationSpy();
+        },
+        onUpdateView: () => {},
+        onCollectionScanInsightActionButtonClick: () => {},
+        onShowAIInputClick: () => {},
+        stages: [],
+      });
     });
 
     it('run action disabled', function () {
@@ -190,9 +280,12 @@ describe('PipelineActions', function () {
 
     it('explain action disabled', function () {
       const button = screen.getByTestId(
-        'pipeline-toolbar-explain-aggregation-button'
+        'pipeline-toolbar-explain-aggregation-dropdown-button-show-actions'
       );
-      expect(button.getAttribute('aria-disabled')).to.equal('true');
+      expect(
+        button.getAttribute('disabled') !== null ||
+          button.getAttribute('aria-disabled') === 'true'
+      ).to.be.true;
 
       userEvent.click(button, undefined, {
         skipPointerEventsCheck: true,
@@ -201,15 +294,76 @@ describe('PipelineActions', function () {
     });
   });
 
+  describe('interpret dropdown item', function () {
+    function renderWithInterpretProps(
+      overrides: Partial<React.ComponentProps<typeof PipelineActions>> = {}
+    ) {
+      return renderPipelineActions({
+        isOptionsVisible: true,
+        showAIEntry: false,
+        showRunButton: true,
+        showExplainButton: true,
+        onRunAggregation: () => {},
+        onToggleOptions: () => {},
+        isExplainButtonDisabled: false,
+        onExplainAggregation: () => {},
+        onUpdateView: () => {},
+        onCollectionScanInsightActionButtonClick: () => {},
+        onShowAIInputClick: () => {},
+        stages: [],
+        ...overrides,
+      });
+    }
+
+    async function openDropdown() {
+      userEvent.click(
+        screen.getByTestId(
+          'pipeline-toolbar-explain-aggregation-dropdown-button-show-actions'
+        )
+      );
+      return screen.findByTestId(
+        'pipeline-toolbar-explain-aggregation-dropdown-button-interpret-action'
+      );
+    }
+
+    it('shows a spinner and disables Interpret when isInterpretLoading is true', async function () {
+      renderWithInterpretProps({ isInterpretLoading: true });
+      const item = await openDropdown();
+      expect(item.getAttribute('aria-disabled')).to.equal('true');
+      expect(screen.getByTitle('Loading interpret')).to.exist;
+    });
+
+    it('disables Interpret with description when pipeline has a $search stage', async function () {
+      renderWithInterpretProps({ stages: ['$search'] });
+      const item = await openDropdown();
+      expect(item.getAttribute('aria-disabled')).to.equal('true');
+      // Both Interpret and Visual Tree show this description for $search
+      expect(
+        screen.getAllByText('Not supported for this query').length
+      ).to.be.at.least(1);
+    });
+  });
+
   describe('with store', function () {
-    async function renderPipelineActions(options = {}) {
+    let preferences: PreferencesAccess;
+
+    beforeEach(async function () {
+      preferences = await createSandboxFromDefaultPreferences();
+    });
+
+    async function renderPipelineActionsWithStore(options = {}) {
       const result = await renderWithStore(
-        <ConnectedPipelineActions
-          showExplainButton={true}
-          showRunButton={true}
-          onToggleOptions={() => {}}
-        ></ConnectedPipelineActions>,
-        options
+        wrapWithExperimentProvider(
+          <ConnectedPipelineActions
+            showExplainButton={true}
+            showRunButton={true}
+            onToggleOptions={() => {}}
+          ></ConnectedPipelineActions>,
+          ExperimentTestGroups.searchActivationProgramP2Variant
+        ),
+        options,
+        mockDataService(),
+        { preferences }
       );
       return {
         ...result,
@@ -218,11 +372,13 @@ describe('PipelineActions', function () {
     }
 
     it('should disable actions when pipeline contains errors', async function () {
-      await renderPipelineActions({ pipeline: [42] });
+      await renderPipelineActionsWithStore({ pipeline: [42] });
 
       expect(
         screen
-          .getByTestId('pipeline-toolbar-explain-aggregation-button')
+          .getByTestId(
+            'pipeline-toolbar-explain-aggregation-dropdown-button-show-actions'
+          )
           .getAttribute('aria-disabled')
       ).to.equal('true');
 
@@ -234,7 +390,7 @@ describe('PipelineActions', function () {
     });
 
     it('should disable actions while ai is fetching', async function () {
-      const { store } = await renderPipelineActions({
+      const { store } = await renderPipelineActionsWithStore({
         pipeline: [{ $match: { _id: 1 } }],
       });
 
@@ -246,7 +402,9 @@ describe('PipelineActions', function () {
       await waitFor(() => {
         expect(
           screen
-            .getByTestId('pipeline-toolbar-explain-aggregation-button')
+            .getByTestId(
+              'pipeline-toolbar-explain-aggregation-dropdown-button-show-actions'
+            )
             .getAttribute('aria-disabled')
         ).to.equal('true');
 
