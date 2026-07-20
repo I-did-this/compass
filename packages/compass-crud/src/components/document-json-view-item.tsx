@@ -5,7 +5,11 @@ import JSONEditor, { type JSONEditorProps } from './json-editor';
 import { useDocumentItemContextMenu } from './use-document-item-context-menu';
 
 const keylineCardStyles = css({
-  overflow: 'hidden',
+  // NB: overflow is intentionally left `visible` here (rather than `hidden`)
+  // so the sticky action header rendered inside JSONEditor can pin to the
+  // virtualized list's scroll container instead of being clipped by this card.
+  // The editor content clips its own corners via an inner wrapper.
+  overflow: 'visible',
   position: 'relative',
 });
 

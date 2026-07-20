@@ -13,6 +13,7 @@ export {
 } from './editor';
 export type { EditorView, Command, Annotation, Completer } from './editor';
 export type { Action } from './action-button';
+export { ActionButton } from './action-button';
 export { createDocumentAutocompleter } from './codemirror/document-autocompleter';
 export { createValidationAutocompleter } from './codemirror/validation-autocompleter';
 export { createQueryAutocompleter } from './codemirror/query-autocompleter';

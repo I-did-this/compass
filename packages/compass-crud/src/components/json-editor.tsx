@@ -19,6 +19,7 @@ import HadronDocument from 'hadron-document';
 import {
   createDocumentAutocompleter,
   CodemirrorMultilineEditor,
+  ActionButton,
 } from '@mongodb-js/compass-editor';
 import type { EditorRef, Action } from '@mongodb-js/compass-editor';
 import type { CrudActions } from '../stores/crud-store';
@@ -45,8 +46,68 @@ const editorDarkModeStyles = css({
   },
 });
 
-const actionsGroupStyles = css({
-  padding: spacing[200],
+const editableJsonStyles = css({
+  position: 'relative',
+});
+
+// The header pins to the top of the virtualized list scroll container while
+// any part of a (potentially very tall) document is on screen, so the row
+// actions and the edit controls stay reachable without scrolling the whole
+// document. Sticky can only escape to the scroll container because the parent
+// KeylineCard uses `overflow: visible` (see document-json-view-item.tsx).
+// Matches the KeylineCard border radius (see keyline-card.tsx) so the header
+// and editor wrapper clip flush with the card's rounded corners now that the
+// card itself uses `overflow: visible`.
+const cardBorderRadius = spacing[200];
+
+const stickyHeaderStyles = css({
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+  display: 'flex',
+  alignItems: 'center',
+  minHeight: spacing[600] + spacing[200],
+  overflow: 'hidden',
+  borderTopLeftRadius: cardBorderRadius,
+  borderTopRightRadius: cardBorderRadius,
+});
+
+const stickyHeaderLightStyles = css({
+  backgroundColor: palette.white,
+  borderBottom: `1px solid ${palette.gray.light2}`,
+});
+
+const stickyHeaderDarkStyles = css({
+  backgroundColor: palette.black,
+  borderBottom: `1px solid ${palette.gray.dark2}`,
+});
+
+const viewActionsBarStyles = css({
+  display: 'flex',
+  alignItems: 'center',
+  gap: spacing[200],
+  width: '100%',
+  padding: spacing[100],
+});
+
+const actionsSpacerStyles = css({
+  flex: '1 0 auto',
+});
+
+// The edit/delete footer was designed as a bottom bar (it rounds its bottom
+// corners); when hosted in the sticky top header we neutralize its own radius
+// and let the header clip the top corners instead.
+const editFooterSlotStyles = css({
+  width: '100%',
+  '& [data-testid="document-footer"]': {
+    borderRadius: 0,
+  },
+});
+
+const editorWrapperStyles = css({
+  overflow: 'hidden',
+  borderBottomLeftRadius: cardBorderRadius,
+  borderBottomRightRadius: cardBorderRadius,
 });
 
 export type JSONEditorProps = {
@@ -330,38 +391,79 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
     }, 0);
   }, [expanded]);
 
+  // In edit/delete mode the sticky header hosts the Cancel/Replace (or
+  // Delete) controls; otherwise it hosts the expand toggle and row actions.
+  const showEditFooter = editing || deleting;
+
   return (
-    <div data-testid="editable-json">
-      <CodemirrorMultilineEditor
-        ref={editorRef}
-        data-testid="json-editor"
-        language="json"
-        text={value}
-        onChangeText={onChange}
-        // Document list card uses its own custom actions
-        copyable={false}
-        formattable={false}
-        customActions={actions}
-        minLines={3}
-        readOnly={!editing}
-        showLineNumbers={editing}
-        className={cx(editorStyles, darkMode && editorDarkModeStyles)}
-        actionsClassName={actionsGroupStyles}
-        completer={completer}
-        onExpand={editing ? undefined : toggleExpandCollapse}
-        expanded={expanded}
-      />
-      <DocumentList.DocumentEditActionsFooter
-        doc={doc}
-        alwaysForceUpdate
-        editing={!!editing}
-        deleting={!!deleting}
-        modified={value !== initialValue}
-        validationError={docValidationError}
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        onCancel={onCancel}
-      />
+    <div data-testid="editable-json" className={editableJsonStyles}>
+      <div
+        className={cx(
+          stickyHeaderStyles,
+          darkMode ? stickyHeaderDarkStyles : stickyHeaderLightStyles
+        )}
+        data-testid="json-editor-sticky-header"
+      >
+        {showEditFooter ? (
+          <div className={editFooterSlotStyles}>
+            <DocumentList.DocumentEditActionsFooter
+              doc={doc}
+              alwaysForceUpdate
+              editing={!!editing}
+              deleting={!!deleting}
+              modified={value !== initialValue}
+              validationError={docValidationError}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              onCancel={onCancel}
+            />
+          </div>
+        ) : (
+          <div className={viewActionsBarStyles}>
+            <ActionButton
+              label={expanded ? 'Collapse all' : 'Expand all'}
+              icon={expanded ? 'CaretDown' : 'CaretRight'}
+              onClick={toggleExpandCollapse}
+              compact
+            />
+            <span className={actionsSpacerStyles} />
+            {actions.map((action) => (
+              <ActionButton
+                key={action.label}
+                icon={action.icon}
+                label={action.label}
+                onClick={() => {
+                  if (!editorRef.current?.editor) {
+                    return false;
+                  }
+                  return action.action(editorRef.current.editor);
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      <div className={editorWrapperStyles}>
+        <CodemirrorMultilineEditor
+          ref={editorRef}
+          data-testid="json-editor"
+          language="json"
+          text={value}
+          onChangeText={onChange}
+          // The document card renders its own sticky action header, so the
+          // editor's built-in floating actions and expand toggle are
+          // suppressed here.
+          copyable={false}
+          formattable={false}
+          customActions={[]}
+          minLines={3}
+          readOnly={!editing}
+          showLineNumbers={editing}
+          className={cx(editorStyles, darkMode && editorDarkModeStyles)}
+          completer={completer}
+          expanded={expanded}
+        />
+      </div>
     </div>
   );
 };
