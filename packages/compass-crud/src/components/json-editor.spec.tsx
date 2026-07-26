@@ -33,15 +33,21 @@ describe('JSONEditor', function () {
       ).to.exist;
     });
 
-    it('hides row actions and shows Cancel/Replace in the header while editing', function () {
+    it('keeps the expand toggle beside Cancel/Replace in the header while editing', function () {
       renderJSONEditor({}, { editing: true });
       const header = screen.getByTestId('json-editor-sticky-header');
       expect(header).to.exist;
-      // Row action icons are hidden in edit mode...
+      // Row action icons (Edit/Copy/etc.) are hidden in edit mode...
       expect(screen.queryByTestId('editor-action-Edit')).to.be.null;
       // ...replaced by the edit controls in the same (sticky) place.
       expect(screen.getByTestId('cancel-button')).to.exist;
       expect(screen.getByTestId('update-button')).to.exist;
+      // ...but the expand/collapse toggle stays put next to them rather than
+      // being hidden behind the Cancel/Replace controls.
+      expect(
+        screen.queryByTestId('editor-action-Expand all') ??
+          screen.queryByTestId('editor-action-Collapse all')
+      ).to.exist;
     });
   });
 

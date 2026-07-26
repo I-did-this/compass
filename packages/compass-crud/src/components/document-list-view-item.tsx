@@ -1,9 +1,17 @@
 import React, { useCallback } from 'react';
 import type HadronDocument from 'hadron-document';
-import { KeylineCard } from '@mongodb-js/compass-components';
+import { css, KeylineCard } from '@mongodb-js/compass-components';
 import Document, { type DocumentProps } from './document';
 import { useDocumentItemContextMenu } from './use-document-item-context-menu';
 import { useMergeRefs } from '@mongodb-js/compass-components';
+
+const keylineCardStyles = css({
+  // NB: overflow is intentionally left `visible` here (rather than `hidden`)
+  // so the sticky edit header rendered inside EditableDocument can pin to the
+  // virtualized list's scroll container instead of being clipped by this card.
+  overflow: 'visible',
+  position: 'relative',
+});
 import {
   useChangeQueryBarQuery,
   useQueryBarQuery,
@@ -66,7 +74,7 @@ const DocumentListViewItem: React.FC<DocumentListViewItemProps> = ({
   const mergedRef = useMergeRefs([docRef, contextMenuRef]);
 
   return (
-    <KeylineCard ref={mergedRef}>
+    <KeylineCard className={keylineCardStyles} ref={mergedRef}>
       {scrollTriggerRef && docIndex === 0 && <div ref={scrollTriggerRef} />}
       <Document
         doc={doc}

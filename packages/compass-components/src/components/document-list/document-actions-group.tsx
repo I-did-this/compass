@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { css, cx } from '@leafygreen-ui/emotion';
 import { spacing } from '@leafygreen-ui/tokens';
+import { palette } from '@leafygreen-ui/palette';
 import type {
   InferredPolymorphicPropsWithRef,
   PolymorphicAs,
@@ -8,6 +9,7 @@ import type {
 import type { BaseButtonProps } from '@leafygreen-ui/button';
 
 import { Button, Icon, Tooltip } from '../leafygreen';
+import { useDarkMode } from '../../hooks/use-theme';
 import type { Signal } from '../signal-popover';
 import { SignalPopover } from '../signal-popover';
 
@@ -21,6 +23,38 @@ const actionsGroupContainer = css({
   paddingLeft: spacing[300],
   paddingRight: spacing[300],
   pointerEvents: 'none',
+});
+
+// `sticky` variant: an in-flow header that pins to the top of the surrounding
+// scroll container (the virtualized documents list) so the row actions stay
+// reachable while a long document scrolls underneath — mirroring the JSON
+// view's sticky action header. Unlike the overlay variant it takes vertical
+// space and the actions are always visible (not hover-gated).
+const actionsGroupStickyContainer = css({
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+  display: 'flex',
+  alignItems: 'center',
+  gap: spacing[200],
+  width: '100%',
+  minHeight: spacing[600] + spacing[200],
+  paddingTop: spacing[100],
+  paddingBottom: spacing[100],
+  paddingLeft: spacing[300],
+  paddingRight: spacing[300],
+  borderTopLeftRadius: spacing[200],
+  borderTopRightRadius: spacing[200],
+});
+
+const actionsGroupStickyLight = css({
+  backgroundColor: palette.white,
+  borderBottom: `1px solid ${palette.gray.light2}`,
+});
+
+const actionsGroupStickyDark = css({
+  backgroundColor: palette.black,
+  borderBottom: `1px solid ${palette.gray.dark2}`,
 });
 
 const actionsGroupItem = css({
@@ -119,6 +153,10 @@ const DocumentActionsGroup: React.FunctionComponent<
     onClone?: () => void;
     onRemove?: () => void;
     onlyShowOnHover?: boolean;
+    // When true, render as an in-flow sticky header pinned to the top of the
+    // surrounding scroll container (always visible) instead of an absolute
+    // hover overlay. See actionsGroupStickyContainer.
+    sticky?: boolean;
     insights?: Signal | Signal[];
   } & (
     | { onExpand?: never; expanded?: never }
@@ -133,8 +171,10 @@ const DocumentActionsGroup: React.FunctionComponent<
   onExpand,
   expanded,
   onlyShowOnHover = true,
+  sticky = false,
   insights,
 }) => {
+  const darkMode = useDarkMode();
   const [signalOpened, setSignalOpened] = useState(false);
   const conatinerRef = useRef<HTMLDivElement | null>(null);
   const isHovered = useElementParentHoverState(conatinerRef);
@@ -155,10 +195,18 @@ const DocumentActionsGroup: React.FunctionComponent<
   return (
     <div
       ref={conatinerRef}
-      className={cx(
-        actionsGroupContainer,
-        onlyShowOnHover && (isActive ? actionsGroupHovered : actionsGroupIdle)
-      )}
+      className={
+        sticky
+          ? cx(
+              actionsGroupStickyContainer,
+              darkMode ? actionsGroupStickyDark : actionsGroupStickyLight
+            )
+          : cx(
+              actionsGroupContainer,
+              onlyShowOnHover &&
+                (isActive ? actionsGroupHovered : actionsGroupIdle)
+            )
+      }
     >
       {onExpand && (
         <ActionButton

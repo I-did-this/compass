@@ -97,12 +97,25 @@ const actionsSpacerStyles = css({
 
 // The edit/delete footer was designed as a bottom bar (it rounds its bottom
 // corners); when hosted in the sticky top header we neutralize its own radius
-// and let the header clip the top corners instead.
+// and let the header clip the top corners instead. It shares the row with the
+// expand toggle, so it takes the remaining width (flex: 1) rather than 100%.
 const editFooterSlotStyles = css({
-  width: '100%',
+  flex: 1,
+  minWidth: 0,
   '& [data-testid="document-footer"]': {
     borderRadius: 0,
   },
+});
+
+// In edit/delete mode the sticky header keeps the expand/collapse toggle to
+// the left of the Cancel/Replace footer so the toggle stays reachable instead
+// of being swapped out for the footer.
+const editHeaderRowStyles = css({
+  display: 'flex',
+  alignItems: 'center',
+  gap: spacing[200],
+  width: '100%',
+  paddingLeft: spacing[200],
 });
 
 const editorWrapperStyles = css({
@@ -220,7 +233,11 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   const onEditingStarted = useCallback(() => {
     if (suppressEditingStartedNoticeRef.current) return;
     setEditing(true);
-  }, []);
+    // Auto-expand on edit so the whole document is unfolded and editable.
+    // doc.expand() fires Expanded -> onExpanded -> unfoldAll (see the fold
+    // effect below), keeping the toggle state and editor fold state in sync.
+    doc.expand();
+  }, [doc]);
 
   const onUpdate = useCallback(() => {
     const newDoc = HadronDocument.FromEJSON(value || '');
@@ -399,8 +416,9 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
     }, 0);
   }, [expanded]);
 
-  // In edit/delete mode the sticky header hosts the Cancel/Replace (or
-  // Delete) controls; otherwise it hosts the expand toggle and row actions.
+  // The sticky header always shows the expand/collapse toggle. In edit/delete
+  // mode it sits beside the Cancel/Replace (or Delete) controls; otherwise it
+  // sits beside the row actions.
   const showEditFooter = editing || deleting;
 
   const annotations: Annotation[] = useMemo(() => {
@@ -443,35 +461,43 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
         data-testid="json-editor-sticky-header"
       >
         {showEditFooter ? (
-          <div className={editFooterSlotStyles}>
-            <DocumentList.DocumentEditActionsFooter
-              doc={doc}
-              alwaysForceUpdate
-              editing={!!editing}
-              deleting={!!deleting}
-              modified={value !== initialValue}
-              validationError={docValidationError}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              onCancel={onCancel}
-              renderStatusMessage={(message) => {
-                return (
-                  <div className={bannerContentStyles}>
-                    <span>{message}</span>
-                    {docValidationError instanceof
-                      UnsafeIntegerValidationError && (
-                      <Link
-                        as="button"
-                        data-testid="fix-unsafe-integer-violations-button"
-                        onClick={onFixUnsafeIntegerViolations}
-                      >
-                        Convert to Int64
-                      </Link>
-                    )}
-                  </div>
-                );
-              }}
+          <div className={editHeaderRowStyles}>
+            <ActionButton
+              label={expanded ? 'Collapse all' : 'Expand all'}
+              icon={expanded ? 'CaretDown' : 'CaretRight'}
+              onClick={toggleExpandCollapse}
+              compact
             />
+            <div className={editFooterSlotStyles}>
+              <DocumentList.DocumentEditActionsFooter
+                doc={doc}
+                alwaysForceUpdate
+                editing={!!editing}
+                deleting={!!deleting}
+                modified={value !== initialValue}
+                validationError={docValidationError}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                onCancel={onCancel}
+                renderStatusMessage={(message) => {
+                  return (
+                    <div className={bannerContentStyles}>
+                      <span>{message}</span>
+                      {docValidationError instanceof
+                        UnsafeIntegerValidationError && (
+                        <Link
+                          as="button"
+                          data-testid="fix-unsafe-integer-violations-button"
+                          onClick={onFixUnsafeIntegerViolations}
+                        >
+                          Convert to Int64
+                        </Link>
+                      )}
+                    </div>
+                  );
+                }}
+              />
+            </div>
           </div>
         ) : (
           <div className={viewActionsBarStyles}>

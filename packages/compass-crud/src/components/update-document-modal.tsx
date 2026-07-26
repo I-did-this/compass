@@ -20,14 +20,9 @@ import HadronDocument from 'hadron-document';
 import {
   createDocumentAutocompleter,
   CodemirrorMultilineEditor,
-  prettify as prettifyJson,
 } from '@mongodb-js/compass-editor';
 import type { Action, EditorRef } from '@mongodb-js/compass-editor';
 
-// Documents whose formatted EJSON exceeds this many lines open with all
-// branches folded so the user sees a compact overview instead of a long
-// scroll. Smaller documents open fully expanded.
-const LARGE_DOC_LINE_THRESHOLD = 20;
 import { useAutocompleteFields } from '@mongodb-js/compass-field-store';
 import type { CrudActions } from '../stores/crud-store';
 import UpdateDocumentFind from './update-document-find';
@@ -248,56 +243,32 @@ const UpdateDocumentModal: React.FunctionComponent<
   // there) and irrelevant in Tree mode (find is JSON-only).
   const [isSmallFindOpen, setIsSmallFindOpen] = useState(false);
   // Tracks the JSON editor's logical expand/collapse state for the combined
-  // format-and-toggle button. Initialised when the modal opens to match the
-  // editor's initial fold pass (large docs open collapsed, small ones open
-  // expanded — see initiallyFolded).
+  // format-and-toggle button. The document always opens fully expanded, so
+  // this starts true; the toggle lets the user fold manually afterwards.
   const [isExpanded, setIsExpanded] = useState(true);
-  // Drives the editor's initialJSONFoldAll prop. Recomputed from the doc's
-  // formatted line count each time the modal opens; large docs default to
-  // collapsed so the user sees a compact overview.
-  const [initiallyFolded, setInitiallyFolded] = useState(false);
   // Bumped on every open so the editor and find bar fully remount, which
   // clears any prior search and editor state.
   const [renderKey, setRenderKey] = useState(0);
   const wasOpenRef = useRef(false);
 
   // Opening the modal always resets to a clean, predictable state: the current
-  // document loaded as JSON, no errors, JSON mode, full-screen, no search.
-  // This runs on the closed -> open transition (including when the modal is
-  // mounted already open).
+  // document loaded as JSON, fully expanded, no errors, JSON mode, full-screen,
+  // no search. This runs on the closed -> open transition (including when the
+  // modal is mounted already open).
   React.useEffect(() => {
     if (isOpen && !wasOpenRef.current && doc) {
       const ejson = doc.toEJSON();
-      // Use the same prettifier the editor uses so the line count we
-      // compare against matches what the user will actually see rendered.
-      // prettifyJson can throw on malformed input — fall back to the raw
-      // EJSON length so opening still works (doc.toEJSON() should always
-      // produce parseable output, but defending against this avoids
-      // blocking the modal on an edge case).
-      let formattedLineCount = 0;
-      try {
-        formattedLineCount = prettifyJson(ejson, 'json').split('\n').length;
-      } catch {
-        formattedLineCount = ejson.split('\n').length;
-      }
-      // When the user opened the modal from a per-field wrench, force the
-      // document open so the focused field is visible — otherwise the field
-      // might be hidden inside a folded large block and the find() below
-      // wouldn't have anywhere to scroll to.
-      const shouldFold =
-        !focusField && formattedLineCount > LARGE_DOC_LINE_THRESHOLD;
       setJsonText(ejson);
       setInitialJson(ejson);
       setMode('JSON');
       setValidationError(null);
       setIsFullScreen(true);
       setIsSmallFindOpen(false);
-      setInitiallyFolded(shouldFold);
-      setIsExpanded(!shouldFold);
+      setIsExpanded(true);
       setRenderKey((key) => key + 1);
     }
     wasOpenRef.current = isOpen;
-  }, [isOpen, doc, focusField]);
+  }, [isOpen, doc]);
 
   // Scroll the JSON editor to focusField on open. Runs after the open effect
   // bumps renderKey and the editor remounts, so editorRef points at the new
@@ -320,14 +291,14 @@ const UpdateDocumentModal: React.FunctionComponent<
     return () => cancelAnimationFrame(id);
   }, [isOpen, focusField, renderKey, mode]);
 
-  // Tree -> JSON remounts the editor, which reapplies initialJSONFoldAll;
-  // resync the toggle state so the button label matches the editor's
-  // actual fold state on re-entry.
+  // Tree -> JSON remounts the editor, which reapplies initialJSONFoldAll
+  // (always fully expanded); resync the toggle state so the button label
+  // matches the editor's actual fold state on re-entry.
   React.useEffect(() => {
     if (mode === 'JSON') {
-      setIsExpanded(!initiallyFolded);
+      setIsExpanded(true);
     }
-  }, [mode, initiallyFolded]);
+  }, [mode]);
 
   // Find is JSON-only, and in full-screen mode it is always inline. Either
   // condition turning false means the small-mode collapsed-Find state has
@@ -631,7 +602,7 @@ const UpdateDocumentModal: React.FunctionComponent<
                   showLineNumbers
                   minLines={10}
                   completer={completer}
-                  initialJSONFoldAll={initiallyFolded}
+                  initialJSONFoldAll={false}
                 />
               ) : (
                 <div
