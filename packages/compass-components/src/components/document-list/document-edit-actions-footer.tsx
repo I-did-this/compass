@@ -310,6 +310,7 @@ const EditActionsFooter: React.FunctionComponent<{
   validationError?: Error | null;
   alwaysForceUpdate?: boolean;
   primaryActionLabel?: string;
+  renderStatusMessage?(message: string): React.ReactNode;
   onUpdate(force: boolean): void;
   onDelete(): void;
   onCancel?: () => void;
@@ -321,6 +322,7 @@ const EditActionsFooter: React.FunctionComponent<{
   validationError: initialError = null,
   alwaysForceUpdate = false,
   primaryActionLabel,
+  renderStatusMessage = (message: string) => message,
   onUpdate,
   onDelete,
   onCancel,
@@ -355,7 +357,7 @@ const EditActionsFooter: React.FunctionComponent<{
       data-status={status}
     >
       <div className={message} data-testid="document-footer-message">
-        {error?.message ?? statusMessage}
+        {renderStatusMessage(error?.message ?? statusMessage)}
       </div>
       {!isSuccess(status) && (
         <div className={buttonGroup}>

@@ -2,7 +2,6 @@ import React from 'react';
 import type { Document } from 'hadron-document';
 import HadronDocument from 'hadron-document';
 import { DocumentList, css } from '@mongodb-js/compass-components';
-import { withPreferences } from 'compass-preferences-model/provider';
 
 import { documentStyles, documentContentStyles } from './readonly-document';
 import { getInsightsForDocument } from '../utils';
@@ -30,7 +29,6 @@ export type EditableDocumentProps = {
   openInsertDocumentDialog?: CrudActions['openInsertDocumentDialog'];
   openUpdateDocumentModal?: CrudActions['openUpdateDocumentModal'];
   copyToClipboard?: CrudActions['copyToClipboard'];
-  showInsights?: boolean;
   onUpdateQuery?: (field: string, value: unknown) => void;
   query?: Record<string, unknown>;
 };
@@ -276,11 +274,7 @@ class EditableDocument extends React.Component<
           onClone={inlineEditable ? this.handleClone.bind(this) : undefined}
           onExpand={this.handleExpandAll.bind(this)}
           expanded={this.state.expanded}
-          insights={
-            this.props.showInsights
-              ? getInsightsForDocument(this.props.doc)
-              : undefined
-          }
+          insights={getInsightsForDocument(this.props.doc)}
         />
       );
     }
@@ -366,4 +360,4 @@ class EditableDocument extends React.Component<
   static displayName = 'EditableDocument';
 }
 
-export default withPreferences(EditableDocument, ['showInsights']);
+export default EditableDocument;

@@ -9,19 +9,20 @@ import {
   css,
   cx,
   DocumentList,
+  Link,
   palette,
   spacing,
   useCurrentValueRef,
   useDarkMode,
 } from '@mongodb-js/compass-components';
 import type { Document } from 'hadron-document';
-import HadronDocument from 'hadron-document';
+import HadronDocument, { UnsafeIntegerValidationError } from 'hadron-document';
 import {
   createDocumentAutocompleter,
   CodemirrorMultilineEditor,
   ActionButton,
 } from '@mongodb-js/compass-editor';
-import type { EditorRef, Action } from '@mongodb-js/compass-editor';
+import type { EditorRef, Action, Annotation } from '@mongodb-js/compass-editor';
 import type { CrudActions } from '../stores/crud-store';
 import { useAutocompleteFields } from '@mongodb-js/compass-field-store';
 
@@ -108,6 +109,13 @@ const editorWrapperStyles = css({
   overflow: 'hidden',
   borderBottomLeftRadius: cardBorderRadius,
   borderBottomRightRadius: cardBorderRadius,
+});
+
+const bannerContentStyles = css({
+  display: 'flex',
+  flexDirection: 'row',
+  gap: spacing[200],
+  justifyContent: 'flex-start',
 });
 
 export type JSONEditorProps = {
@@ -395,6 +403,36 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   // Delete) controls; otherwise it hosts the expand toggle and row actions.
   const showEditFooter = editing || deleting;
 
+  const annotations: Annotation[] = useMemo(() => {
+    if (docValidationError instanceof UnsafeIntegerValidationError) {
+      return docValidationError.violations.map((violation) => ({
+        message:
+          'Exceeds safe integer range. Wrap it as {"$numberLong": "..."} to preserve its exact value.',
+        from: violation.loc.from,
+        to: violation.loc.to,
+        severity: 'error',
+      }));
+    }
+    return [];
+  }, [docValidationError]);
+
+  const onFixUnsafeIntegerViolations = useCallback(() => {
+    const editor = editorRef.current?.editor;
+    if (!editor) {
+      return;
+    }
+    if (docValidationError instanceof UnsafeIntegerValidationError) {
+      editor.dispatch({
+        changes: docValidationError.violations.map((violation) => ({
+          from: violation.loc.from,
+          to: violation.loc.to,
+          insert: `{"$numberLong": "${violation.source}"}`,
+        })),
+      });
+      setDocValidationError(null);
+    }
+  }, [docValidationError]);
+
   return (
     <div data-testid="editable-json" className={editableJsonStyles}>
       <div
@@ -416,6 +454,23 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
               onUpdate={onUpdate}
               onDelete={onDelete}
               onCancel={onCancel}
+              renderStatusMessage={(message) => {
+                return (
+                  <div className={bannerContentStyles}>
+                    <span>{message}</span>
+                    {docValidationError instanceof
+                      UnsafeIntegerValidationError && (
+                      <Link
+                        as="button"
+                        data-testid="fix-unsafe-integer-violations-button"
+                        onClick={onFixUnsafeIntegerViolations}
+                      >
+                        Convert to Int64
+                      </Link>
+                    )}
+                  </div>
+                );
+              }}
             />
           </div>
         ) : (
@@ -462,6 +517,7 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
           className={cx(editorStyles, darkMode && editorDarkModeStyles)}
           completer={completer}
           expanded={expanded}
+          annotations={annotations}
         />
       </div>
     </div>
