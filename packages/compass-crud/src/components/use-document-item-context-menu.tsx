@@ -38,7 +38,7 @@ export function useDocumentItemContextMenu({
           }
         : undefined,
       {
-        telemetryLabel: 'Document Item',
+        telemetryLabel: 'Document Expand Collapse',
         items: [
           {
             label: isExpanded ? 'Collapse all fields' : 'Expand all fields',
@@ -50,10 +50,25 @@ export function useDocumentItemContextMenu({
               }
             },
           },
+        ],
+      },
+      {
+        telemetryLabel: 'Document Item',
+        items: [
+          // NB: inline "Edit document"/"Cancel editing" from upstream is
+          // intentionally omitted here - this fork routes all editing through
+          // the "Update document" modal above rather than an inline editable
+          // state.
           {
-            label: 'Copy document',
+            label: 'Copy document as Shell Syntax',
             onAction: () => {
-              copyToClipboard?.(doc);
+              copyToClipboard?.(doc, 'shell-syntax');
+            },
+          },
+          {
+            label: 'Copy document as EJSON',
+            onAction: () => {
+              copyToClipboard?.(doc, 'ejson');
             },
           },
           isEditable

@@ -56,6 +56,7 @@ import {
   atlasServiceLocator,
   AtlasServiceProvider,
 } from '@mongodb-js/atlas-service/provider';
+import { AtlasAdminApiServiceProvider } from '@mongodb-js/atlas-admin-api/provider';
 import {
   AtlasAiServiceProvider,
   ToolsControllerProvider,
@@ -130,9 +131,11 @@ const WithAtlasProviders: React.FC<{ children: React.ReactNode }> = ({
             defaultHeaders,
           }}
         >
-          <AtlasAiServiceProvider apiURLPreset="cloud">
-            {children}
-          </AtlasAiServiceProvider>
+          <AtlasAdminApiServiceProvider>
+            <AtlasAiServiceProvider apiURLPreset="cloud">
+              {children}
+            </AtlasAiServiceProvider>
+          </AtlasAdminApiServiceProvider>
         </AtlasServiceProvider>
       </AtlasClusterConnectionsOnlyProvider>
     </AtlasCloudAuthServiceProvider>
@@ -412,14 +415,17 @@ const CompassComponentsProviderWeb: React.FunctionComponent<{
   darkMode?: boolean;
 }> = ({ darkMode, children }) => {
   const track = useTelemetry();
-  const { enableGuideCues, legacyUUIDDisplayEncoding } = usePreferences([
-    'enableGuideCues',
-    'legacyUUIDDisplayEncoding',
-  ]);
+  const { enableGuideCues, legacyUUIDDisplayEncoding, timezone } =
+    usePreferences([
+      'enableGuideCues',
+      'legacyUUIDDisplayEncoding',
+      'timezone',
+    ]);
   return (
     <CompassComponentsProvider
       darkMode={darkMode}
       legacyUUIDDisplayEncoding={legacyUUIDDisplayEncoding}
+      timezone={timezone}
       // Making sure that compass-web modals and tooltips are definitely not
       // hidden by Cloud UI sidebar and page header
       stackedElementsZIndex={10_000}
@@ -484,7 +490,6 @@ const CompassComponentsProviderWeb: React.FunctionComponent<{
       onSignalClose={(id) => {
         track('Signal Closed', { id });
       }}
-      disableContextMenus={false}
       disableGuideCues={!enableGuideCues}
       {...LINK_PROPS}
     >

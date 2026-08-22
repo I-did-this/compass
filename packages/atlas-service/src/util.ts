@@ -5,13 +5,7 @@ import { createHash } from 'crypto';
 
 export type AtlasUserInfo = {
   sub: string;
-  firstName: string;
-  lastName: string;
-  primaryEmail: string;
-  login: string;
 };
-
-export type IntrospectInfo = { active: boolean };
 
 export type Token = plugin.IdPServerResponse;
 
@@ -40,6 +34,14 @@ export function throwIfNetworkTrafficDisabled(
 ) {
   if (!preferences.getPreferences().networkTraffic) {
     throw new Error('Network traffic is not allowed');
+  }
+}
+
+export function throwIfAtlasSignInDisabled(
+  preferences: Pick<PreferencesAccess, 'getPreferences'>
+) {
+  if (!preferences.getPreferences().enableAtlasSignIn) {
+    throw new Error('Atlas sign in is not allowed');
   }
 }
 
@@ -121,10 +123,6 @@ export type AtlasServiceConfig = {
     issuer: string;
   };
   /**
-   * Atlas Account Portal UI base url
-   */
-  authPortalUrl: string;
-  /**
    * Assistant API base url
    */
   assistantApiBaseUrl: string;
@@ -150,10 +148,9 @@ const config = Object.create({
     atlasPrivateApiBaseUrl: 'http://cloud-local.mmscloudteam.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud-local.mmscloudteam.com/api/atlas',
     atlasLogin: {
-      clientId: '0oaq1le5jlzxCuTbu357',
-      issuer: 'https://auth-qa.mongodb.com/oauth2/default',
+      clientId: '124d5a79-2063-4f76-8655-8133e98e25c9',
+      issuer: 'https://authorize-dev.mongodb.com',
     },
-    authPortalUrl: 'https://account-local.mongodb.com/account/login',
     assistantApiBaseUrl: 'https://knowledge-dev.mongodb.com/api/v1',
     userDataBaseUrl: 'https://cloud-local.mmscloudteam.com/ui/userData',
   },
@@ -167,10 +164,9 @@ const config = Object.create({
     atlasPrivateApiBaseUrl: 'https://cloud-dev.mongodb.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud-dev.mongodb.com/api/atlas',
     atlasLogin: {
-      clientId: '0oaq1le5jlzxCuTbu357',
-      issuer: 'https://auth-qa.mongodb.com/oauth2/default',
+      clientId: '124d5a79-2063-4f76-8655-8133e98e25c9',
+      issuer: 'https://authorize-dev.mongodb.com',
     },
-    authPortalUrl: 'https://account-dev.mongodb.com/account/login',
     assistantApiBaseUrl: 'https://knowledge-dev.mongodb.com/api/v1',
     userDataBaseUrl: 'https://cloud-dev.mongodb.com/ui/userData',
   },
@@ -184,10 +180,9 @@ const config = Object.create({
     atlasPrivateApiBaseUrl: 'https://cloud-qa.mongodb.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud-qa.mongodb.com/api/atlas',
     atlasLogin: {
-      clientId: '0oaq1le5jlzxCuTbu357',
-      issuer: 'https://auth-qa.mongodb.com/oauth2/default',
+      clientId: '124d5a79-2063-4f76-8655-8133e98e25c9',
+      issuer: 'https://authorize-qa.mongodb.com',
     },
-    authPortalUrl: 'https://account-qa.mongodb.com/account/login',
     assistantApiBaseUrl: 'https://knowledge-dev.mongodb.com/api/v1',
     userDataBaseUrl: 'https://cloud-qa.mongodb.com/ui/userData',
   },
@@ -201,8 +196,8 @@ const config = Object.create({
     atlasPrivateApiBaseUrl: 'https://cloud-stage.mongodb.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud-stage.mongodb.com/api/atlas',
     atlasLogin: {
-      clientId: '0oaq1le5jlzxCuTbu357',
-      issuer: 'https://auth-qa.mongodb.com/oauth2/default',
+      clientId: '124d5a79-2063-4f76-8655-8133e98e25c9',
+      issuer: 'https://authorize-stage.mongodb.com',
     },
     authPortalUrl: 'https://account-stage.mongodb.com/account/login',
     assistantApiBaseUrl: 'https://knowledge-dev.mongodb.com/api/v1',
@@ -218,10 +213,9 @@ const config = Object.create({
     atlasPrivateApiBaseUrl: 'https://cloud.mongodb.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud.mongodb.com/api/atlas',
     atlasLogin: {
-      clientId: '0oajzdcznmE8GEyio297',
-      issuer: 'https://auth.mongodb.com/oauth2/default',
+      clientId: '124d5a79-2063-4f76-8655-8133e98e25c9',
+      issuer: 'https://authorize.mongodb.com',
     },
-    authPortalUrl: 'https://account.mongodb.com/account/login',
     assistantApiBaseUrl: 'https://knowledge.mongodb.com/api/v1',
     userDataBaseUrl: 'https://cloud.mongodb.com/ui/userData',
   },
@@ -239,7 +233,6 @@ export function getAtlasConfig(
       clientId: process.env.COMPASS_CLIENT_ID_OVERRIDE,
       issuer: process.env.COMPASS_OIDC_ISSUER_OVERRIDE,
     },
-    authPortalUrl: process.env.COMPASS_ATLAS_AUTH_PORTAL_URL_OVERRIDE,
     assistantApiBaseUrl: process.env.COMPASS_ASSISTANT_BASE_URL_OVERRIDE,
     userDataBaseUrl: process.env.COMPASS_USER_DATA_BASE_URL_OVERRIDE,
   };
@@ -255,4 +248,9 @@ export function getTrackingUserInfo(userInfo: AtlasUserInfo) {
     // various MongoDB properties
     auid: createHash('sha256').update(userInfo.sub, 'utf8').digest('hex'),
   };
+}
+
+export function getJWTTokenPayload(token: string): Record<string, unknown> {
+  const base64Url = token.split('.')[1];
+  return JSON.parse(Buffer.from(base64Url, 'base64url').toString('utf8'));
 }

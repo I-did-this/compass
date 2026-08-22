@@ -172,7 +172,6 @@ export const editorPalette = {
     disabledColor: codePalette.light[2],
     disabledBackgroundColor: codePalette.light[1],
     gutterColor: codePalette.light[3],
-    gutterBackgroundColor: codePalette.light[0],
     gutterActiveLineBackgroundColor: rgba(palette.gray.light2, 0.5),
     gutterFoldButtonColor: palette.black,
     cursorColor: palette.gray.base,
@@ -190,6 +189,7 @@ export const editorPalette = {
     autocompleteBorderColor: palette.gray.light2,
     autocompleteMatchColor: palette.green.dark1,
     autocompleteSelectedBackgroundColor: palette.gray.light2,
+    linkColor: palette.blue.base,
   },
   dark: {
     color: codePalette.dark[3],
@@ -197,7 +197,6 @@ export const editorPalette = {
     disabledColor: codePalette.dark[3],
     disabledBackgroundColor: palette.gray.dark3,
     gutterColor: codePalette.dark[3],
-    gutterBackgroundColor: codePalette.dark[0],
     gutterActiveLineBackgroundColor: rgba(palette.gray.dark2, 0.5),
     gutterFoldButtonColor: palette.white,
     cursorColor: palette.green.base,
@@ -215,6 +214,7 @@ export const editorPalette = {
     autocompleteBorderColor: palette.gray.dark1,
     autocompleteMatchColor: palette.gray.light3,
     autocompleteSelectedBackgroundColor: palette.gray.dark2,
+    linkColor: palette.blue.light1,
   },
 } as const;
 
@@ -256,7 +256,7 @@ function getStylesForTheme(theme: CodemirrorThemeType) {
       },
       '& .cm-gutters': {
         color: editorPalette[theme].gutterColor,
-        backgroundColor: editorPalette[theme].gutterBackgroundColor,
+        backgroundColor: 'transparent',
         border: 'none',
       },
       '& .cm-gutter-lint': {
@@ -466,6 +466,29 @@ function getStylesForTheme(theme: CodemirrorThemeType) {
       '& .cm-tooltip .completion-info p:last-child': {
         marginBottom: 0,
       },
+      // Hide the inline underline @codemirror/lint error
+      '& .cm-lintRange-error': {
+        backgroundImage: 'none',
+      },
+      '& .cm-lintPoint::after': {
+        display: 'none',
+      },
+      '.cm-diagnosticAction': {
+        background: 'none',
+        display: 'inline',
+        margin: '0 0 0 8px',
+        padding: '0',
+        border: 'none',
+        color: editorPalette[theme].linkColor,
+        cursor: 'pointer',
+      },
+      '& .cm-diagnosticAction:focus-visible': {
+        outline: 'none',
+        boxShadow: `0 0 0 2px ${palette.blue.light1}`,
+      },
+      '& .cm-diagnosticAction:hover': {
+        textDecoration: 'underline',
+      },
       '& .cm-widgetBuffer': {
         // Default is text-top which causes weird 1px added to the line height
         // when widget (in our case this is placeholder widget) is shown in the
@@ -484,6 +507,9 @@ const themeStyles = {
 
 // Base theme for autocomplete hover - applies to document root for tooltips
 const autocompleteHoverStyles = EditorView.baseTheme({
+  '.cm-tooltip': {
+    maxWidth: 'min(90vw, 500px)',
+  },
   '&light .cm-tooltip.cm-tooltip-autocomplete ul li:hover': {
     color: editorPalette.light.autocompleteColor,
     backgroundColor: editorPalette.light.autocompleteSelectedBackgroundColor,
@@ -564,12 +590,20 @@ const highlightStyles = {
 } as const;
 
 // We don't have any other cases we need to support in a base editor
-type EditorLanguage = 'json' | 'javascript' | 'javascript-expression';
+export type EditorLanguage = 'json' | 'javascript' | 'javascript-expression';
 
+/**
+ * *Note*: Action only works when linting has been enabled
+ */
 export type Annotation = Pick<
   Diagnostic,
-  'from' | 'to' | 'severity' | 'message'
+  'from' | 'to' | 'severity' | 'message' | 'actions' | 'renderMessage'
 >;
+
+export type Linter = (
+  tree: ReturnType<typeof syntaxTree>,
+  view: EditorView
+) => readonly Annotation[];
 
 type EditorProps = {
   language?: EditorLanguage;
@@ -589,6 +623,7 @@ type EditorProps = {
   'data-testid'?: string;
   annotations?: Annotation[];
   completer?: CompletionSource;
+  linter?: Extension;
   customExtensions?: Extension[];
   minLines?: number;
   maxLines?: number;
@@ -734,6 +769,7 @@ const BaseEditor = React.forwardRef<EditorRef, EditorProps>(function BaseEditor(
     highlightActiveLine: shouldHighlightActiveLine = true,
     annotations,
     completer,
+    linter,
     customExtensions,
     darkMode: _darkMode,
     disabled = false,
@@ -994,6 +1030,14 @@ const BaseEditor = React.forwardRef<EditorRef, EditorProps>(function BaseEditor(
     editorViewRef
   );
 
+  const linterExtension = useCodemirrorExtensionCompartment(
+    () => {
+      return linter ? linter : [];
+    },
+    linter,
+    editorViewRef
+  );
+
   const placeholderExtension = useCodemirrorExtensionCompartment(
     () => {
       return placeholder ? codemirrorPlaceholder(placeholder) : [];
@@ -1066,6 +1110,7 @@ const BaseEditor = React.forwardRef<EditorRef, EditorProps>(function BaseEditor(
         // remains available to consumers building their own find UI.
         search(),
         autocompletionExtension,
+        linterExtension,
         languageExtension,
         syntaxHighlighting(highlightStyles['light']),
         syntaxHighlighting(highlightStyles['dark']),
@@ -1097,11 +1142,14 @@ const BaseEditor = React.forwardRef<EditorRef, EditorProps>(function BaseEditor(
           ...completionKeymap,
           ...tabKeymap,
         ]),
-        // Supply the document body as the tooltip parent
-        // because we are using containment contexts for container
-        // queries which offset things otherwise.
+        // Supply the tooltip parent explicitly because we are using
+        // containment contexts for container queries which offset things
+        // otherwise. When the editor is rendered inside a modal (a native
+        // <dialog> promoted to the top layer via showModal), the tooltip
+        // must be parented to that dialog so it renders in the same top
+        // layer instead of behind the modal.
         tooltips({
-          parent: document.body,
+          parent: domNode.closest('dialog') ?? document.body,
         }),
         editableExtension,
         readOnlyExtension,
@@ -1189,6 +1237,7 @@ const BaseEditor = React.forwardRef<EditorRef, EditorProps>(function BaseEditor(
     readOnlyExtension,
     themeConfigExtension,
     autocompletionExtension,
+    linterExtension,
     lineHeightExtension,
     activeLineExtension,
     placeholderExtension,
@@ -1421,7 +1470,6 @@ type InlineEditorProps = Omit<
   | 'text'
   | 'showLineNumbers'
   | 'showFoldGutter'
-  | 'showAnnotationsGutter'
   | 'showScroll'
   | 'highlightActiveLine'
   | 'minLines'
@@ -1439,14 +1487,17 @@ const inlineStyles = css({
 });
 
 const InlineEditor = React.forwardRef<EditorRef, InlineEditorProps>(
-  function InlineEditor({ className, ...props }, forwardRef) {
+  function InlineEditor(
+    { className, showAnnotationsGutter, ...props },
+    forwardRef
+  ) {
     return (
       <BaseEditor
         ref={forwardRef}
         maxLines={10}
         showFoldGutter={false}
         showLineNumbers={false}
-        showAnnotationsGutter={false}
+        showAnnotationsGutter={Boolean(showAnnotationsGutter)}
         showScroll={false}
         highlightActiveLine={false}
         className={cx(inlineStyles, className)}

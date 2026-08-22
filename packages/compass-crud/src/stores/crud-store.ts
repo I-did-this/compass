@@ -5,7 +5,10 @@ import { findIndex, isEmpty, isEqual } from 'lodash';
 import semver from 'semver';
 import StateMixin from '@mongodb-js/reflux-state-mixin';
 import type { Element } from 'hadron-document';
-import HadronDocument, { Document } from 'hadron-document';
+import HadronDocument, {
+  Document,
+  objectToIdiomaticEJSON,
+} from 'hadron-document';
 import { toJSString, validate } from 'mongodb-query-parser';
 import _parseShellBSON, { ParseMode } from '@mongodb-js/shell-bson-parser';
 import type { PreferencesAccess } from 'compass-preferences-model/provider';
@@ -73,6 +76,7 @@ import type { CollationOptions, MongoServerError } from 'mongodb';
 export type BSONObject = TypeCastMap['Object'];
 export type BSONArray = TypeCastMap['Array'];
 type Mutable<T> = { -readonly [P in keyof T]: T[P] };
+export type CopyDocumentFormat = 'ejson' | 'shell-syntax';
 
 export type EmittedAppRegistryEvents =
   | 'open-import'
@@ -97,7 +101,7 @@ export type CrudActions = {
   openUpdateDocumentModal(doc: Document, focusField?: string): Promise<void>;
   closeUpdateDocumentModal(): void;
   openInsertDocumentDialog(doc: BSONObject, cloned: boolean): Promise<void>;
-  copyToClipboard(doc: Document): void; //XXX
+  copyToClipboard(doc: Document, format?: CopyDocumentFormat): void; //XXX
   openBulkDeleteDialog(): void;
   runBulkUpdate(): Promise<void>;
   closeBulkDeleteDialog(): void;
@@ -109,6 +113,8 @@ export type CrudActions = {
 
 const DOCUMENT_VIEWS = ['List', 'JSON', 'Table'] as const;
 export type DocumentView = (typeof DOCUMENT_VIEWS)[number];
+
+export type InsertDocumentView = 'list' | 'json' | 'shell';
 
 const INITIAL_BULK_UPDATE_TEXT = `{
   $set: {
@@ -299,11 +305,11 @@ export type WriteError = {
 
 type InsertState = {
   doc: null | Document;
-  jsonDoc: null | string;
+  editorText: null | string;
   error?: WriteError;
   csfleState: InsertCSFLEState;
   mode: 'modifying' | 'error';
-  jsonView: boolean;
+  insertView: InsertDocumentView;
   isOpen: boolean;
   isCommentNeeded: boolean;
 };
@@ -512,10 +518,10 @@ class CrudStoreImpl
   getInitialInsertState(): InsertState {
     return {
       doc: null,
-      jsonDoc: null,
+      editorText: null,
       csfleState: { state: 'none' },
       mode: MODIFYING,
-      jsonView: false,
+      insertView: 'shell',
       isOpen: false,
       isCommentNeeded: true,
     };
@@ -564,22 +570,14 @@ class CrudStoreImpl
     return this.state.view.toLowerCase() as Lowercase<DocumentView>;
   }
 
-  /**
-   * Copy the document to the clipboard.
-   *
-   * @param {HadronDocument} doc - The document.
-   *
-   * @returns {Boolean} If the copy succeeded.
-   */
-  copyToClipboard(doc: Document) {
+  copyToClipboard(doc: Document, format: CopyDocumentFormat = 'ejson') {
     this.track(
       'Document Copied',
-      { mode: this.modeForTelemetry() },
+      { mode: this.modeForTelemetry(), format },
       this.connectionInfoRef.current
     );
-    const documentEJSON = doc.toEJSON();
-    // eslint-disable-next-line no-undef
-    void navigator.clipboard.writeText(documentEJSON);
+    const str = format === 'ejson' ? doc.toEJSON() : doc.toShellSyntax();
+    void navigator.clipboard.writeText(str);
   }
 
   getWriteError(error: Error): WriteError {
@@ -984,6 +982,11 @@ class CrudStoreImpl
    * Closing the insert document dialog just resets the state to the default.
    */
   closeInsertDocumentDialog() {
+    this.track(
+      'Document Insert Cancelled',
+      { mode: insertModeForTelemetry(this.state.insert.insertView) },
+      this.connectionInfoRef.current
+    );
     this.setState({
       insert: this.getInitialInsertState(),
     });
@@ -1113,13 +1116,13 @@ class CrudStoreImpl
       csfleState.state = 'csfle-disabled';
     }
 
-    const jsonDoc = hadronDoc.toEJSON();
+    const insertView = 'shell';
 
     this.setState({
       insert: {
         doc: hadronDoc,
-        jsonDoc: jsonDoc,
-        jsonView: true,
+        editorText: serializeInsertDocument(insertView, hadronDoc),
+        insertView,
         error: undefined,
         csfleState,
         mode: MODIFYING,
@@ -1372,84 +1375,60 @@ class CrudStoreImpl
   }
 
   /**
-   * Switch between list and JSON views when inserting a document through Insert Document modal.
+   * Switch between the list, JSON, and shell views when inserting through the
+   * Insert Document modal.
    *
-   * Also modifies doc and jsonDoc states to keep accurate data for each view.
+   * The `list` (Hadron Document) view is only available for a single document,
+   * so it converts between the structured `doc` and the editor text. For the
+   * text views it just converts `editorText` between EJSON and shell syntax.
+   *
    * @param {String} view - view we are switching to.
    */
-  toggleInsertDocument(view: DocumentView) {
-    if (view === 'JSON') {
-      const jsonDoc = this.state.insert.doc?.toEJSON();
+  toggleInsertDocumentView(view: InsertDocumentView) {
+    const { insertView: from, doc, editorText } = this.state.insert;
+    const common: Pick<
+      InsertState,
+      'error' | 'csfleState' | 'mode' | 'isOpen' | 'isCommentNeeded'
+    > = {
+      error: undefined,
+      csfleState: this.state.insert.csfleState,
+      mode: MODIFYING,
+      isOpen: true,
+      isCommentNeeded: this.state.insert.isCommentNeeded,
+    };
 
+    if (view === 'list') {
+      const hadronDoc =
+        !editorText || editorText === ''
+          ? doc
+          : parseInsertDocument(from, editorText);
       this.setState({
-        insert: {
-          doc: this.state.insert.doc,
-          jsonView: true,
-          jsonDoc: jsonDoc ?? null,
-          error: undefined,
-          csfleState: this.state.insert.csfleState,
-          mode: MODIFYING,
-          isOpen: true,
-          isCommentNeeded: this.state.insert.isCommentNeeded,
-        },
+        insert: { ...common, insertView: 'list', doc: hadronDoc, editorText },
       });
-    } else {
-      let hadronDoc;
-
-      if (this.state.insert.jsonDoc === '') {
-        hadronDoc = this.state.insert.doc;
-      } else {
-        hadronDoc = HadronDocument.FromEJSON(this.state.insert.jsonDoc ?? '');
-      }
-
-      this.setState({
-        insert: {
-          doc: hadronDoc,
-          jsonView: false,
-          jsonDoc: this.state.insert.jsonDoc,
-          error: undefined,
-          csfleState: this.state.insert.csfleState,
-          mode: MODIFYING,
-          isOpen: true,
-          isCommentNeeded: this.state.insert.isCommentNeeded,
-        },
-      });
+      return;
     }
-  }
 
-  /**
-   * Toggle just the jsonView insert state.
-   *
-   * @param {String} view - view we are switching to.
-   */
-  toggleInsertDocumentView(view: DocumentView) {
-    const jsonView = view === 'JSON';
+    const nextEditorText =
+      from === 'list'
+        ? serializeInsertDocument(view, doc)
+        : convertInsertText(from, view, editorText ?? '');
     this.setState({
-      insert: {
-        doc: new Document({}),
-        jsonDoc: this.state.insert.jsonDoc,
-        jsonView: jsonView,
-        error: undefined,
-        csfleState: this.state.insert.csfleState,
-        mode: MODIFYING,
-        isOpen: true,
-        isCommentNeeded: this.state.insert.isCommentNeeded,
-      },
+      insert: { ...common, insertView: view, doc, editorText: nextEditorText },
     });
   }
 
   /**
-   * As we are editing a JSON document in Insert Document Dialog, update the
-   * state with the inputed json data.
+   * As we are editing a document in the Insert Document Dialog, update the
+   * state with the inputted text (EJSON or shell syntax).
    *
-   * @param {String} value - JSON string we are updating.
+   * @param {String} value - text we are updating.
    */
-  updateJsonDoc(value: string | null) {
+  updateInsertDocText(value: string | null) {
     this.setState({
       insert: {
         doc: new Document({}),
-        jsonDoc: value,
-        jsonView: true,
+        editorText: value,
+        insertView: this.state.insert.insertView,
         error: undefined,
         csfleState: this.state.insert.csfleState,
         mode: MODIFYING,
@@ -1463,34 +1442,40 @@ class CrudStoreImpl
    * Insert a single document.
    */
   async insertMany() {
+    const insertMode = insertModeForTelemetry(this.state.insert.insertView);
+    let isMultipleDocs = false;
     try {
       const schemaFields = this.fieldStoreService.getSchemaFieldsForNamespace(
         this.state.ns
       );
-      const docs = HadronDocument.FromEJSONArray(
-        this.state.insert.jsonDoc ?? ''
+      const docs = parseInsertDocumentArray(
+        this.state.insert.insertView,
+        this.state.insert.editorText ?? ''
       ).map((doc) => {
         if (schemaFields) {
           doc.preserveTypesFromSchema(schemaFields);
         }
         return doc.generateObject();
       });
+      isMultipleDocs = docs.length > 1;
+
+      await this.dataService.insertMany(this.state.ns, docs);
+
       this.track(
         'Document Inserted',
         {
-          mode: this.state.insert.jsonView ? 'json' : 'field-by-field',
-          multiple: docs.length > 1,
+          mode: insertMode,
+          multiple: isMultipleDocs,
         },
         this.connectionInfoRef.current
       );
 
-      await this.dataService.insertMany(this.state.ns, docs);
       // track mode for analytics events
       const payload = {
         ns: this.state.ns,
         view: this.state.view,
-        mode: this.state.insert.jsonView ? 'json' : 'default',
-        multiple: true,
+        mode: this.state.insert.insertView !== 'list' ? 'json' : 'default',
+        multiple: isMultipleDocs,
         docs,
       };
       void this.fieldStoreService.updateFieldsFromDocuments(
@@ -1502,11 +1487,19 @@ class CrudStoreImpl
 
       this.state.insert = this.getInitialInsertState();
     } catch (error) {
+      this.track(
+        'Document Insert Failed',
+        {
+          mode: insertMode,
+          multiple: isMultipleDocs,
+        },
+        this.connectionInfoRef.current
+      );
       this.setState({
         insert: {
           doc: new Document({}),
-          jsonDoc: this.state.insert.jsonDoc,
-          jsonView: true,
+          editorText: this.state.insert.editorText,
+          insertView: this.state.insert.insertView,
           error: this.getWriteError(error as Error),
           csfleState: this.state.insert.csfleState,
           mode: ERROR,
@@ -1528,24 +1521,18 @@ class CrudStoreImpl
    * view to insert.
    */
   async insertDocument() {
-    this.track(
-      'Document Inserted',
-      {
-        mode: this.state.insert.jsonView ? 'json' : 'field-by-field',
-        multiple: false,
-      },
-      this.connectionInfoRef.current
-    );
-
     let doc: BSONObject;
+
+    const insertMode = insertModeForTelemetry(this.state.insert.insertView);
 
     try {
       const schemaFields = this.fieldStoreService.getSchemaFieldsForNamespace(
         this.state.ns
       );
-      if (this.state.insert.jsonView) {
-        const hadronDoc = HadronDocument.FromEJSON(
-          this.state.insert.jsonDoc ?? ''
+      if (this.state.insert.insertView !== 'list') {
+        const hadronDoc = parseInsertDocument(
+          this.state.insert.insertView,
+          this.state.insert.editorText ?? ''
         );
         if (schemaFields) {
           hadronDoc.preserveTypesFromSchema(schemaFields);
@@ -1565,10 +1552,19 @@ class CrudStoreImpl
       }
       await this.dataService.insertOne(this.state.ns, doc);
 
+      this.track(
+        'Document Inserted',
+        {
+          mode: insertMode,
+          multiple: false,
+        },
+        this.connectionInfoRef.current
+      );
+
       const payload = {
         ns: this.state.ns,
         view: this.state.view,
-        mode: this.state.insert.jsonView ? 'json' : 'default',
+        mode: this.state.insert.insertView !== 'list' ? 'json' : 'default',
         multiple: false,
         docs: [doc],
       };
@@ -1580,11 +1576,19 @@ class CrudStoreImpl
 
       this.state.insert = this.getInitialInsertState();
     } catch (error) {
+      this.track(
+        'Document Insert Failed',
+        {
+          mode: insertMode,
+          multiple: false,
+        },
+        this.connectionInfoRef.current
+      );
       this.setState({
         insert: {
           doc: this.state.insert.doc,
-          jsonDoc: this.state.insert.jsonDoc,
-          jsonView: this.state.insert.jsonView,
+          editorText: this.state.insert.editorText,
+          insertView: this.state.insert.insertView,
           error: this.getWriteError(error as Error),
           csfleState: this.state.insert.csfleState,
           mode: ERROR,
@@ -1641,6 +1645,13 @@ class CrudStoreImpl
    * The view has changed.
    */
   viewChanged(view: DocumentView) {
+    if (view !== this.state.view) {
+      this.track(
+        'Document View Changed',
+        { view: view.toLowerCase() as Lowercase<DocumentView> },
+        this.connectionInfoRef.current
+      );
+    }
     localStorage.setItem(DOCUMENT_VIEW_STORAGE_KEY, view);
     this.setState({ view: view });
   }
@@ -2241,8 +2252,7 @@ export function activateDocumentsPlugin(
     'favorites-open-bulk-update-favorite',
     (query: { update: BSONObject }) => {
       void store.refreshDocuments();
-      void store.openBulkUpdateModal();
-      void store.updateBulkUpdatePreview(
+      void store.openBulkUpdateModal(
         toJSString(query.update) || INITIAL_BULK_UPDATE_TEXT
       );
     }
@@ -2393,4 +2403,121 @@ export function parseShellBSON(source: string): BSONObject | BSONObject[] {
     throw new Error('The provided definition is invalid.');
   }
   return parsed as BSONObject | BSONObject[];
+}
+
+/**
+ * Shell syntax accepts any object-valued expression (`new Date()`, `/foo/`,
+ * ...), not only document literals. Passing one of those to HadronDocument
+ * would enumerate no fields and silently insert an empty document, so we
+ * reject anything that isn't a plain object.
+ */
+function assertPlainDocument(parsed: unknown): BSONObject {
+  const prototype =
+    parsed && typeof parsed === 'object' ? Object.getPrototypeOf(parsed) : null;
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new Error('The provided definition is not a valid document.');
+  }
+  return parsed as BSONObject;
+}
+
+function insertModeForTelemetry(
+  view: InsertDocumentView
+): 'field-by-field' | 'json' | 'shell' {
+  return view === 'list'
+    ? 'field-by-field'
+    : view === 'shell'
+    ? 'shell'
+    : 'json';
+}
+
+/**
+ * Parse the insert editor text into its plain value, using shell syntax or
+ * EJSON depending on the active insert view.
+ */
+export function parseInsertDocumentText(
+  view: InsertDocumentView,
+  text: string
+): unknown {
+  return view === 'shell'
+    ? parseShellBSON(text)
+    : EJSON.parse(text, { relaxed: false });
+}
+
+/**
+ * Wrap an already parsed insert editor value into a single HadronDocument,
+ * rejecting values that could not be inserted as a document.
+ */
+export function toInsertHadronDocument(parsed: unknown): HadronDocument {
+  return new HadronDocument(
+    Array.isArray(parsed)
+      ? (parsed as unknown as BSONObject)
+      : assertPlainDocument(parsed)
+  );
+}
+
+/**
+ * Parse the insert editor text into a single HadronDocument, using shell
+ * syntax or EJSON depending on the active insert view.
+ */
+export function parseInsertDocument(
+  view: InsertDocumentView,
+  text: string
+): HadronDocument {
+  return toInsertHadronDocument(parseInsertDocumentText(view, text));
+}
+
+/**
+ * Parse the insert editor text into an array of HadronDocuments (for the
+ * multiple-document case), using shell syntax or EJSON.
+ */
+export function parseInsertDocumentArray(
+  view: InsertDocumentView,
+  text: string
+): HadronDocument[] {
+  if (view === 'shell') {
+    const parsed = parseShellBSON(text);
+    return (Array.isArray(parsed) ? parsed : [parsed]).map(
+      (doc) => new HadronDocument(assertPlainDocument(doc))
+    );
+  }
+  return HadronDocument.FromEJSONArray(text);
+}
+
+function serializeInsertDocument(
+  view: InsertDocumentView,
+  doc: Document | null
+): string {
+  if (!doc) {
+    return '';
+  }
+  return view === 'shell'
+    ? toJSString(doc.generateObject()) ?? ''
+    : doc.toEJSON();
+}
+
+/**
+ * Convert insert editor text between EJSON and shell syntax when switching
+ * views.
+ */
+function convertInsertText(
+  from: InsertDocumentView,
+  to: InsertDocumentView,
+  text: string
+): string {
+  if (from === to || from === 'list' || to === 'list' || !text.trim()) {
+    return text;
+  }
+  try {
+    const value =
+      from === 'shell'
+        ? parseShellBSON(text)
+        : EJSON.parse(text, { relaxed: false });
+    return to === 'shell'
+      ? toJSString(value) ?? text
+      : objectToIdiomaticEJSON(value);
+  } catch {
+    // This shouldn't happen as switching is disabled in
+    // the UI when parsing fails.
+    return text;
+  }
 }
