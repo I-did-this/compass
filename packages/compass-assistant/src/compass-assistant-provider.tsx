@@ -31,6 +31,7 @@ import {
   type ProactiveInsightsContext,
   type AnalyzeOutputContext,
   type DebugSearchErrorContext,
+  TOOL_DENIAL_REASONS,
 } from './prompts';
 import {
   type PreferencesAccess,
@@ -88,7 +89,10 @@ import thunk from 'redux-thunk';
 import type { ThunkAction } from 'redux-thunk';
 import type { Action, AnyAction } from 'redux';
 import { connect } from 'react-redux';
-import { AI_MODEL_CHAT_VERSION } from '@mongodb-js/compass-generative-ai/provider';
+import {
+  AI_MODEL_AGENT_VERSION,
+  AI_MODEL_CHAT_VERSION,
+} from '@mongodb-js/compass-generative-ai/provider';
 
 export const ASSISTANT_DRAWER_ID = 'compass-assistant-drawer';
 
@@ -136,6 +140,7 @@ export type AssistantMessage = UIMessage & {
      *  to (if any).
      */
     connectionInfo?: BasicConnectionInfo | null;
+
     /** Whether to enable or disable storage of this message in chatapi. */
     disableStorage?: boolean;
     /** SHA-256 hashed User ID. */
@@ -191,6 +196,7 @@ type AssistantActionsContextType = {
       connectionInfo?: BasicConnectionInfo;
     }) => void
   ) => Promise<void>;
+  atlasAdminApi?: AtlasAdminApiService;
 };
 
 type AssistantActionsType = Omit<
@@ -240,6 +246,17 @@ export function useAssistantActions(): AssistantActionsType {
     diagnoseSearchStage,
     getIsAssistantEnabled: () => true,
   };
+}
+
+/**
+ * Access the Atlas Admin API service from within the assistant.
+ */
+export function useAtlasAdminApi(): AtlasAdminApiService {
+  const { atlasAdminApi } = useContext(AssistantActionsContext);
+  if (!atlasAdminApi) {
+    throw new Error('No AtlasAdminApiService available in this context');
+  }
+  return atlasAdminApi;
 }
 
 export const compassAssistantServiceLocator = createServiceLocator(() => {
@@ -377,8 +394,8 @@ export function ensureOptInAndSendThunk(
     const enableToolCalling = prefs.enableToolCalling;
     const enableGenAIToolCalling =
       prefs.enableGenAIToolCallingAtlasProject && prefs.enableGenAIToolCalling;
-    const enableAtlasConnectionErrorDebugger =
-      prefs.enableAtlasConnectionErrorDebugger;
+    const enableAtlasConnectionErrorDebuggerTool =
+      prefs.enableAtlasConnectionErrorDebuggerTool;
 
     if (enableToolCalling && enableGenAIToolCalling) {
       // Start the server once the first time both the feature flag and
@@ -402,6 +419,7 @@ export function ensureOptInAndSendThunk(
           await chat.addToolApprovalResponse({
             id: part.approval.id,
             approved: false,
+            reason: TOOL_DENIAL_REASONS.interrupted,
           });
         }
       }
@@ -425,7 +443,7 @@ export function ensureOptInAndSendThunk(
       activeCollectionMetadata,
       activeCollectionSubTab,
       enableGenAIToolCalling: enableToolCalling && enableGenAIToolCalling,
-      enableAtlasConnectionErrorDebugger,
+      enableAtlasConnectionErrorDebuggerTool,
     });
 
     // use just the text so we have a stable reference to compare against
@@ -467,7 +485,7 @@ export function ensureOptInAndSendThunk(
       ? activeCollectionSubTab || activeWorkspace.type
       : null;
     setToolsContext(toolsController, {
-      enableTelemetry: prefs.trackUsageStatistics,
+      enableMCPTelemetry: prefs.trackUsageStatistics,
       maxTimeMS: prefs.maxTimeMS,
       activeConnection,
       connections: activeConnections,
@@ -688,6 +706,9 @@ function activateAssistantPlugin(
       logger,
       track,
       getTools: () => toolsController.getActiveTools(),
+      modelVersion: preferences.getPreferences().enableSkillsInAssistant
+        ? AI_MODEL_AGENT_VERSION
+        : AI_MODEL_CHAT_VERSION,
     });
 
   const lastContextPromptRef = { current: null as string | null };
@@ -717,11 +738,17 @@ function getChat(): AssistantThunkAction<Chat<AssistantMessage>> {
   return (_dispatch, _getState, { chat }) => chat;
 }
 
+// Getter thunk to access the Atlas Admin API service from extra args
+function getAtlasAdminApi(): AssistantThunkAction<AtlasAdminApiService> {
+  return (_dispatch, _getState, { atlasAdminApi }) => atlasAdminApi;
+}
+
 // Connected AssistantProvider component
 const AssistantProviderInner: React.FunctionComponent<
   PropsWithChildren<{
     projectId?: string;
     getChat: () => Chat<AssistantMessage>;
+    getAtlasAdminApi: () => AtlasAdminApiService;
     ensureOptInAndSend: (
       message: SendMessage,
       options: SendOptions,
@@ -772,6 +799,7 @@ const AssistantProviderInner: React.FunctionComponent<
 > = ({
   projectId,
   getChat: getChatAction,
+  getAtlasAdminApi: getAtlasAdminApiAction,
   ensureOptInAndSend,
   interpretExplainPlan,
   interpretConnectionError,
@@ -783,6 +811,7 @@ const AssistantProviderInner: React.FunctionComponent<
 }) => {
   // chat is stable — created once in activate, never changes
   const [chat] = React.useState(() => getChatAction());
+  const [atlasAdminApi] = React.useState(() => getAtlasAdminApiAction());
   const { openDrawer } = useDrawerActions();
 
   const assistantGlobalStateRef = useCurrentValueRef(useAssistantGlobalState());
@@ -839,6 +868,7 @@ const AssistantProviderInner: React.FunctionComponent<
         assistantGlobalStateRef.current
       );
     },
+    atlasAdminApi,
   });
 
   return (
@@ -854,6 +884,7 @@ const AssistantProviderInner: React.FunctionComponent<
 
 const ConnectedAssistantProvider = connect(null, {
   getChat,
+  getAtlasAdminApi,
   ensureOptInAndSend: ensureOptInAndSendThunk,
   interpretExplainPlan: interpretExplainPlanThunk,
   interpretConnectionError: interpretConnectionErrorThunk,
@@ -905,6 +936,7 @@ export function createDefaultChat({
   track,
   options,
   getTools,
+  modelVersion = AI_MODEL_CHAT_VERSION,
 }: {
   originForPrompt: string;
   appNameForPrompt: string;
@@ -915,6 +947,7 @@ export function createDefaultChat({
     transport: Chat<AssistantMessage>['transport'];
   };
   getTools?: () => ToolSet;
+  modelVersion?: string;
 }): Chat<AssistantMessage> {
   const initialBaseUrl = 'http://PLACEHOLDER_BASE_URL_TO_BE_REPLACED.invalid';
   return new Chat<AssistantMessage>({
@@ -957,7 +990,7 @@ export function createDefaultChat({
               init
             );
           },
-        }).responses(AI_MODEL_CHAT_VERSION),
+        }).responses(modelVersion),
       }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onError: (err: Error) => {
@@ -977,7 +1010,7 @@ export function createDefaultChat({
 export function setToolsContext(
   toolsController: ToolsController,
   {
-    enableTelemetry,
+    enableMCPTelemetry,
     maxTimeMS,
     activeConnection,
     connections,
@@ -987,7 +1020,7 @@ export function setToolsContext(
     enableGenAIToolCalling,
     activeTab,
   }: {
-    enableTelemetry: boolean;
+    enableMCPTelemetry: boolean;
     maxTimeMS?: number;
     activeConnection: ActiveConnectionInfo | null;
     connections: ActiveConnectionInfo[];
@@ -1013,7 +1046,7 @@ export function setToolsContext(
     }
     toolsController.setActiveTools(toolGroups);
     toolsController.setContext({
-      enableTelemetry,
+      enableMCPTelemetry,
       maxTimeMS,
       connections: connections.map((connection) => {
         if (!connection.connectOptions) {
@@ -1033,7 +1066,7 @@ export function setToolsContext(
   } else {
     toolsController.setActiveTools(new Set([]));
     toolsController.setContext({
-      enableTelemetry,
+      enableMCPTelemetry,
       maxTimeMS,
       connections: [],
       query: undefined,

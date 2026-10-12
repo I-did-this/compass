@@ -1,5 +1,5 @@
-import React, { createContext, useContext } from 'react';
-import { cleanup, render } from '@mongodb-js/testing-library-compass';
+import React, { StrictMode, createContext, useContext } from 'react';
+import { render, waitFor } from '@mongodb-js/testing-library-compass';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import {
@@ -13,8 +13,6 @@ import { connect } from 'react-redux';
 import { EventEmitter } from 'events';
 
 describe('registerCompassPlugin', function () {
-  afterEach(cleanup);
-
   it('allows registering plugins with a reflux-ish store', function () {
     const component = sinon.stub().callsFake(() => <></>);
     const activate = sinon.stub().returns({ store: { state: { foo: 'bar' } } });
@@ -66,7 +64,7 @@ describe('registerCompassPlugin', function () {
     });
   });
 
-  it('allows registering plugins with a redux store', function () {
+  it('allows registering plugins with a redux store', async function () {
     const connector = connect(({ counter }) => ({ counter }));
     const component = sinon.stub().callsFake(() => <></>);
     const store = createStore(
@@ -97,9 +95,11 @@ describe('registerCompassPlugin', function () {
       dispatch: store.dispatch,
     });
     store.dispatch({ type: 'inc' });
-    expect(component).to.have.been.calledWith({
-      counter: 1,
-      dispatch: store.dispatch,
+    await waitFor(() => {
+      expect(component).to.have.been.calledWith({
+        counter: 1,
+        dispatch: store.dispatch,
+      });
     });
   });
 
@@ -129,6 +129,32 @@ describe('registerCompassPlugin', function () {
       </AppRegistryProvider>
     );
     expect(activate.firstCall.args[1]).to.have.property('blah', dummy);
+  });
+
+  it('runs activate / deactivate only once (even in StrictMode)', function () {
+    const deactivate = sinon.spy();
+    const activate = sinon.stub().returns({ store: { state: {} }, deactivate });
+    const Plugin = registerCompassPlugin({
+      name: 'FooPlugin',
+      component: function Component() {
+        return <></>;
+      },
+      activate,
+    });
+
+    const { unmount } = render(
+      <StrictMode>
+        <AppRegistryProvider>
+          <Plugin />
+        </AppRegistryProvider>
+      </StrictMode>
+    );
+    expect(activate, 'Expected activate() to have been called once').to.have
+      .been.calledOnce;
+
+    unmount();
+    expect(deactivate, 'Expected deactivate() to have been called once').to.have
+      .been.calledOnce;
   });
 });
 

@@ -2,7 +2,6 @@ import schemaFixture from '../../test/fixtures/array_of_docs.fixture.json';
 import type { activatePlugin } from './store';
 import { expect } from 'chai';
 import { schemaFieldsToAutocompleteItems } from '../modules/fields';
-import type { Schema } from '@mongodb-js/mongodb-schema';
 import {
   createPluginTestHelpers,
   cleanup,
@@ -64,6 +63,39 @@ describe('FieldStore', function () {
     });
   });
 
+  context('when a document has a field named __proto__', function () {
+    // JSON.parse creates an own "__proto__" key, an object literal would not
+    const doc = JSON.parse('{"__proto__": 1, "name": "Compass"}');
+
+    afterEach(function () {
+      for (const key of ['name', 'path', 'count', 'type']) {
+        delete (Object.prototype as Record<string, unknown>)[key];
+      }
+    });
+
+    it('does not pollute Object.prototype', async function () {
+      await updateFieldsFromDocuments('test.test', [doc]);
+      // eslint-disable-next-line @mongodb-js/devtools/no-plain-object-records
+      const plain: Record<string, unknown> = {};
+      expect(plain.name).to.equal(undefined);
+      expect(plain.path).to.equal(undefined);
+      expect(plain.count).to.equal(undefined);
+      expect(plain.type).to.equal(undefined);
+    });
+
+    it('keeps the __proto__ field', async function () {
+      await updateFieldsFromDocuments('test.test', [doc]);
+      const state = store.getState()[connectionInfo.id]['test.test'];
+      expect(Object.keys(state.fields)).to.have.all.members([
+        '__proto__',
+        'name',
+      ]);
+      expect(
+        schemaFieldsToAutocompleteItems(state.fields).map(({ name }) => name)
+      ).to.have.all.members(['__proto__', 'name']);
+    });
+  });
+
   describe('#onActivated', function () {
     const doc = { harry: 1, potter: true };
     const expected = [
@@ -86,7 +118,7 @@ describe('FieldStore', function () {
     ];
 
     it('on schema store trigger', function () {
-      updateFieldsFromSchema('test.test', schemaFixture as Schema);
+      updateFieldsFromSchema('test.test', schemaFixture);
       const state = store.getState()[connectionInfo.id]['test.test'];
       expect(Object.keys(state.fields)).to.have.all.members([
         '_id',
@@ -267,7 +299,7 @@ describe('FieldStore', function () {
     it('merges a schema with the existing state', async function () {
       const doc = { harry: 1, potter: true };
       await updateFieldsFromDocuments('test.test', [doc]);
-      updateFieldsFromSchema('test.test', schemaFixture as Schema);
+      updateFieldsFromSchema('test.test', schemaFixture);
       const state = store.getState()[connectionInfo.id]['test.test'];
       expect(Object.keys(state.fields)).to.have.all.members([
         'harry',

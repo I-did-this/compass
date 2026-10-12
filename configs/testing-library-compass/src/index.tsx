@@ -10,16 +10,14 @@ import {
   InMemoryConnectionStorage,
 } from '@mongodb-js/connection-storage/provider';
 import type {
+  RenderOptions,
+  RenderResult,
   RenderHookOptions,
   RenderHookResult,
-} from '@testing-library/react-hooks';
-import {
-  renderHook,
-  cleanup as rtlCleanupHook,
-} from '@testing-library/react-hooks';
-import type { RenderOptions, RenderResult } from '@testing-library/react';
+} from '@testing-library/react';
 import {
   render,
+  renderHook,
   cleanup as rtlCleanup,
   screen,
   waitFor,
@@ -278,18 +276,18 @@ class InMemoryPreferencesAccess
   }
 }
 
-type ComponentWithChildren = React.ComponentType<{
-  children: React.ReactElement;
+type ComponentWithChildren = React.JSXElementConstructor<{
+  children?: React.ReactNode;
 }>;
 
-const EmptyWrapper = ({ children }: { children: React.ReactElement }) => {
+const EmptyWrapper = ({ children }: { children?: React.ReactNode }) => {
   return <>{children}</>;
 };
 
 function getConnectionsFromConnectionsOption(
   connections: TestConnectionsOptions['connections']
 ): Exclude<TestConnectionsOptions['connections'], 'no-preload'> {
-  return connections === 'no-preload' ? undefined : connections ?? [];
+  return connections === 'no-preload' ? undefined : (connections ?? []);
 }
 
 const TEST_ENV_CURRENT_CONNECTION = {
@@ -359,7 +357,9 @@ function createWrapper(
     },
     getDataServiceForConnection,
   };
-  const StoreGetter: React.FunctionComponent = ({ children }) => {
+  const StoreGetter: React.FunctionComponent<{
+    children?: React.ReactNode;
+  }> = ({ children }) => {
     const store = useStore();
     const actions = useConnectionActions();
     // We're breaking the rules of hooks on purpose here to expose the values
@@ -447,7 +447,7 @@ function createWrapper(
                                   (() => {
                                     return Promise.resolve([{}, null] as [
                                       any,
-                                      null
+                                      null,
                                     ]);
                                   })
                                 }
@@ -506,8 +506,9 @@ function unwrapContextMenuContainer(result: RenderResult) {
   }
 }
 
-export type RenderConnectionsOptions = RenderOptions &
+export type RenderConnectionsOptions = Omit<RenderOptions, 'wrapper'> &
   TestConnectionsOptions & {
+    wrapper?: ComponentWithChildren;
     /**
      * Whether to include the context menu container and menu in the container of the returned result.
      */
@@ -569,9 +570,9 @@ export type RenderHookConnectionsOptions<HookProps> = Omit<
 
 export type RenderWithConnectionsHookResult<
   HookProps = unknown,
-  HookResult = unknown
+  HookResult = unknown,
 > = ReturnType<typeof createWrapper>['wrapperState'] &
-  RenderHookResult<HookProps, HookResult>;
+  RenderHookResult<HookResult, HookProps>;
 
 function renderHookWithConnections<HookProps, HookResult>(
   cb: (props: HookProps) => HookResult,
@@ -681,7 +682,7 @@ async function renderHookWithActiveConnection<HookProps, HookResult>(
 function createPluginWrapper<
   Props,
   ServiceLocators extends Record<string, () => unknown>,
-  PluginContext extends CompassPlugin
+  PluginContext extends CompassPlugin,
 >(
   Plugin: CompassPluginComponent<Props, ServiceLocators, PluginContext>,
   initialPluginProps?: Props,
@@ -707,7 +708,7 @@ function createPluginWrapper<
 }
 
 export type RenderPluginWithConnectionsResult<
-  T extends CompassPluginComponent<any, any, any>
+  T extends CompassPluginComponent<any, any, any>,
 > = RenderWithConnectionsResult & {
   plugin: ReturnType<T['useActivate']>;
 };
@@ -715,7 +716,7 @@ export type RenderPluginWithConnectionsResult<
 function createPluginTestHelpers<
   Props,
   ServiceLocators extends Record<string, () => unknown>,
-  PluginContext extends CompassPlugin
+  PluginContext extends CompassPlugin,
 >(
   Plugin: CompassPluginComponent<Props, ServiceLocators, PluginContext>,
   defaultInitialPluginProps?: Props
@@ -887,11 +888,6 @@ const fireEvent = testingLibraryFireEvent;
 const cleanup = rtlCleanup;
 
 /**
- * @deprecated @testing-library/react-hooks installs these hooks automatically
- */
-const cleanupHook = rtlCleanupHook;
-
-/**
  * In some cases we still want to just render something without all the
  * wrappers, for these cases we provide access to the original methods, but this
  * is not the default behavior
@@ -909,7 +905,6 @@ export {
   renderWithConnections as render,
   renderHookWithConnections as renderHook,
   cleanup,
-  cleanupHook,
   screen,
   wait,
   waitFor,

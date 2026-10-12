@@ -14,22 +14,47 @@ import type {
 } from '@mongodb-js/atlas-service/provider';
 import { AtlasAuthPlugin } from '@mongodb-js/atlas-service/renderer';
 import { AtlasToolCallMessage } from './atlas-tool-call-message';
+import { TOOL_DENIAL_REASONS } from '../prompts';
+import { containsText } from './test-helpers';
 
 class FakeAtlasAuthService {
   private user: AtlasUserInfo | null;
   public signIn: sinon.SinonStub;
+  public resolveSignIn: () => void = () => {};
 
   constructor({
     signedIn = false,
     signInSucceeds = true,
-  }: { signedIn?: boolean; signInSucceeds?: boolean } = {}) {
+    deferSignIn = false,
+  }: {
+    signedIn?: boolean;
+    signInSucceeds?: boolean;
+    deferSignIn?: boolean;
+  } = {}) {
     this.user = signedIn ? { sub: 'user-1' } : null;
     this.signIn = sinon.stub().callsFake(() => {
-      if (!signInSucceeds) {
-        return Promise.reject(new Error('sign-in failed'));
+      const complete = () => {
+        if (!signInSucceeds) {
+          throw new Error('sign-in failed');
+        }
+        this.user = { sub: 'user-1' };
+        return this.user;
+      };
+      if (!deferSignIn) {
+        return signInSucceeds
+          ? Promise.resolve(complete())
+          : Promise.reject(new Error('sign-in failed'));
       }
-      this.user = { sub: 'user-1' };
-      return Promise.resolve(this.user);
+      // Do not resolve immediately so we can test the in-progress flows
+      return new Promise<AtlasUserInfo>((resolve, reject) => {
+        this.resolveSignIn = () => {
+          try {
+            resolve(complete());
+          } catch (err) {
+            reject(err);
+          }
+        };
+      });
     });
   }
 
@@ -46,8 +71,6 @@ class FakeAtlasAuthService {
 }
 
 describe('AtlasToolCallMessage', function () {
-  const connectionInfo = { id: 'conn-1', name: 'My Cluster' };
-
   function makeToolCall(
     state: ToolUIPart['state'],
     approvalId: string | undefined = 'approval-1',
@@ -73,13 +96,19 @@ describe('AtlasToolCallMessage', function () {
     {
       signedIn = false,
       signInSucceeds = true,
-    }: { signedIn?: boolean; signInSucceeds?: boolean } = {}
+      deferSignIn = false,
+    }: {
+      signedIn?: boolean;
+      signInSucceeds?: boolean;
+      deferSignIn?: boolean;
+    } = {}
   ) {
     const onApprove = sinon.stub();
     const onDeny = sinon.stub();
     const atlasAuthService = new FakeAtlasAuthService({
       signedIn,
       signInSucceeds,
+      deferSignIn,
     });
     const { renderWithConnections } = createPluginTestHelpers(
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -90,23 +119,57 @@ describe('AtlasToolCallMessage', function () {
     const { container, track } = renderWithConnections(
       <AtlasToolCallMessage
         toolCall={makeToolCall('approval-requested')}
-        connectionInfo={connectionInfo}
         onApprove={onApprove}
         onDeny={onDeny}
         {...props}
+        connection={props.connection ?? null}
       />
     );
     return { onApprove, onDeny, atlasAuthService, container, track };
   }
 
+  describe('connection chip', function () {
+    it('renders the connection name passed in the tool arguments', function () {
+      renderMessage({
+        toolCall: {
+          ...makeToolCall('approval-requested'),
+          input: { connectionName: 'My Cluster' },
+        } as ToolUIPart,
+      });
+
+      expect(screen.getByText('My Cluster')).to.exist;
+    });
+
+    // The debugger tool runs for a connection the user is not connected to, so
+    // the active connection must not be used as its chip.
+    it('renders no connection name when the tool arguments have none', function () {
+      renderMessage({ connection: { id: 'conn-1', name: 'My Cluster' } });
+
+      expect(screen.queryByText('My Cluster')).to.not.exist;
+    });
+  });
+
   describe('when awaiting approval and the user is not signed in', function () {
     it('prompts the user to connect to Atlas', function () {
       renderMessage();
 
-      expect(screen.getByText('Connect with Atlas to debug this connection?'))
-        .to.exist;
+      expect(
+        screen.getByText(
+          containsText(
+            'Connect with Atlas and run atlas-connection-error-debugger?'
+          )
+        )
+      ).to.exist;
       expect(screen.getByText('Connect to Atlas')).to.exist;
       expect(screen.getByText('Skip')).to.exist;
+    });
+
+    it('notes that the read-only tool will not change the cluster', function () {
+      renderMessage();
+
+      expect(
+        screen.getByText("This is read-only and won't change your cluster.")
+      ).to.exist;
     });
 
     it('signs in then calls onApprove with the approval id when confirming', async function () {
@@ -118,17 +181,20 @@ describe('AtlasToolCallMessage', function () {
         expect(atlasAuthService.signIn).to.have.been.calledOnce;
       });
       await waitFor(() => {
-        expect(onApprove).to.have.been.calledOnceWith('approval-1', true);
+        expect(onApprove).to.have.been.calledOnceWith('approval-1');
       });
     });
 
     it('denies when sign-in fails', async function () {
-      const { onApprove } = renderMessage({}, { signInSucceeds: false });
+      const { onDeny } = renderMessage({}, { signInSucceeds: false });
 
       userEvent.click(screen.getByText('Connect to Atlas'));
 
       await waitFor(() => {
-        expect(onApprove).to.have.been.calledOnceWith('approval-1', false);
+        expect(onDeny).to.have.been.calledOnceWith(
+          'approval-1',
+          TOOL_DENIAL_REASONS.atlasSignInFailed
+        );
       });
     });
 
@@ -155,6 +221,8 @@ describe('AtlasToolCallMessage', function () {
       await waitFor(() => {
         expect(track).to.have.been.calledWith('Atlas Sign In Started', {
           entrypoint: 'assistant-tool-atlas-connection-error-debugger',
+          attempt: 1,
+          previousOutcome: null,
         });
       });
     });
@@ -181,8 +249,23 @@ describe('AtlasToolCallMessage', function () {
 
       userEvent.click(screen.getByText('Skip'));
 
-      expect(onDeny).to.have.been.calledOnceWith('approval-1');
+      expect(onDeny).to.have.been.calledOnceWith(
+        'approval-1',
+        TOOL_DENIAL_REASONS.userDenied
+      );
       expect(atlasAuthService.signIn).to.not.have.been.called;
+    });
+
+    it('does not render the action buttons when there is no approval id', function () {
+      renderMessage({
+        toolCall: {
+          ...makeToolCall('approval-requested'),
+          approval: undefined,
+        } as unknown as ToolUIPart,
+      });
+
+      expect(screen.queryByText('Connect to Atlas')).to.not.exist;
+      expect(screen.queryByText('Skip')).to.not.exist;
     });
   });
 
@@ -193,9 +276,22 @@ describe('AtlasToolCallMessage', function () {
       await waitFor(() => {
         expect(screen.getByText('Run')).to.exist;
       });
-      expect(screen.getByText('Run Atlas to debug this connection?')).to.exist;
+      expect(
+        screen.getByText(containsText('Run atlas-connection-error-debugger?'))
+      ).to.exist;
       expect(screen.getByText('Cancel')).to.exist;
       expect(screen.queryByText('Connect to Atlas')).to.not.exist;
+    });
+
+    it('does not show the read-only note', async function () {
+      renderMessage({}, { signedIn: true });
+
+      await waitFor(() => {
+        expect(screen.getByText('Run')).to.exist;
+      });
+      expect(
+        screen.queryByText("This is read-only and won't change your cluster.")
+      ).to.not.exist;
     });
 
     it('does not track a sign in prompt', async function () {
@@ -216,7 +312,70 @@ describe('AtlasToolCallMessage', function () {
       userEvent.click(screen.getByText('Run'));
 
       await waitFor(() => {
-        expect(onApprove).to.have.been.calledOnceWith('approval-1', true);
+        expect(onApprove).to.have.been.calledOnceWith('approval-1');
+      });
+    });
+  });
+
+  describe('while sign in is in progress', function () {
+    async function startSignIn(opts: { signedIn?: boolean } = {}) {
+      const rendered = renderMessage({}, { ...opts, deferSignIn: true });
+      const buttonLabel = opts.signedIn ? 'Run' : 'Connect to Atlas';
+      await waitFor(() => {
+        expect(screen.getByText(buttonLabel)).to.exist;
+      });
+      userEvent.click(screen.getByText(buttonLabel));
+      // Wait for the store to move into the 'in-progress' state, surfaced as the
+      // connecting message.
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            containsText(
+              `Connecting with Atlas to run atlas-connection-error-debugger...`
+            )
+          )
+        ).to.exist;
+      });
+      return rendered;
+    }
+
+    it('shows the connecting message', async function () {
+      const { atlasAuthService, onApprove } = await startSignIn();
+
+      expect(
+        screen.getByText(
+          containsText(
+            `Connecting with Atlas to run atlas-connection-error-debugger...`
+          )
+        )
+      ).to.exist;
+
+      // Let the pending sign in settle so we don't leave a dangling attempt
+      atlasAuthService.resolveSignIn();
+      await waitFor(() => {
+        expect(onApprove).to.have.been.called;
+      });
+    });
+
+    it('hides the approval action buttons', async function () {
+      const { atlasAuthService, onApprove } = await startSignIn();
+
+      expect(screen.queryByText('Connect to Atlas')).to.not.exist;
+      expect(screen.queryByText('Skip')).to.not.exist;
+
+      atlasAuthService.resolveSignIn();
+      await waitFor(() => {
+        expect(onApprove).to.have.been.called;
+      });
+    });
+
+    it('resolves the approval once sign in completes', async function () {
+      const { onApprove, atlasAuthService } = await startSignIn();
+
+      atlasAuthService.resolveSignIn();
+
+      await waitFor(() => {
+        expect(onApprove).to.have.been.calledOnceWith('approval-1');
       });
     });
   });
@@ -244,12 +403,6 @@ describe('AtlasToolCallMessage', function () {
       expect(screen.queryByText('Connect to Atlas')).to.not.exist;
       expect(screen.queryByText('Skip')).to.not.exist;
     });
-  });
-
-  it('displays the connection chip for atlas-connection-error-debugger', function () {
-    renderMessage();
-
-    expect(screen.getByText(connectionInfo.name)).to.exist;
   });
 
   describe('custom tool result', function () {

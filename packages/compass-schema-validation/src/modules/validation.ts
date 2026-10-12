@@ -1,7 +1,7 @@
 import type { RootAction, SchemaValidationThunkAction } from '.';
-import { type Document, EJSON } from 'bson';
+import type { Document } from 'bson';
 import { parseFilter } from 'mongodb-query-parser';
-import { stringify as javascriptStringify } from 'javascript-stringify';
+import { toJSString } from '@mongodb-js/shell-bson-parser';
 import { openToast } from '@mongodb-js/compass-components';
 import { VALIDATION_TEMPLATE } from '@mongodb-js/mongodb-constants';
 import { isEqual, pick } from 'lodash';
@@ -266,16 +266,7 @@ export default function reducer(
       ValidationActions.ValidationFetched
     )
   ) {
-    // TODO(COMPASS-4989): EJSON??
-    const checkedValidator = checkValidator(
-      EJSON.stringify(action.validator, undefined, 2)
-    );
-    // TODO(COMPASS-4989): javascriptStringify??
-    const validator = javascriptStringify(
-      checkedValidator.validator,
-      null,
-      2
-    ) as string;
+    const validator = toJSString(action.validator, 2) ?? '{}';
 
     return {
       ...state,

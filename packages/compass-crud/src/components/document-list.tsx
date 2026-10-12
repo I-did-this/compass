@@ -42,6 +42,16 @@ import {
 } from '@mongodb-js/compass-query-bar';
 import { usePreferences } from 'compass-preferences-model/provider';
 import { useAssistantActions } from '@mongodb-js/compass-assistant';
+import {
+  useDocumentEditsTelemetry,
+  type DocumentEditsMode,
+} from '../hooks/use-document-edits-telemetry';
+
+const DOCUMENT_EDITS_MODES = {
+  List: 'list',
+  JSON: 'json',
+  Table: 'table',
+} as const satisfies { [view in DocumentView]: DocumentEditsMode };
 
 // Table has its own scrollable container.
 const tableStyles = css({
@@ -133,7 +143,7 @@ export type DocumentListProps = {
     | 'insertDataHandler'
     | 'openExportFileDialog'
     | 'isWritable'
-    | 'isMockDataGeneratorEligibleAndSchemaReady'
+    | 'isMockDataGeneratorEligible'
     | 'instanceDescription'
     | 'refreshDocuments'
     | 'resultId'
@@ -299,7 +309,7 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
     openExportFileDialog,
     viewChanged,
     isWritable,
-    isMockDataGeneratorEligibleAndSchemaReady,
+    isMockDataGeneratorEligible,
     instanceDescription,
     refreshDocuments,
     resultId,
@@ -328,6 +338,8 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
     docsPerPage,
     updateMaxDocumentsPerPage,
   } = props;
+
+  useDocumentEditsTelemetry(docs, DOCUMENT_EDITS_MODES[view]);
 
   const onOpenInsert = useCallback(
     (key: 'insert-document' | 'import-file') => {
@@ -591,9 +603,7 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
             error={error}
             count={count}
             isFetching={isFetching}
-            isMockDataGeneratorEligibleAndSchemaReady={
-              isMockDataGeneratorEligibleAndSchemaReady
-            }
+            isMockDataGeneratorEligible={isMockDataGeneratorEligible}
             lastCountRunMaxTimeMS={lastCountRunMaxTimeMS}
             loadingCount={loadingCount}
             start={start}

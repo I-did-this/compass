@@ -70,9 +70,9 @@ export const filterStageOperators = ({
   const namespaceType = isTimeSeries
     ? TIME_SERIES
     : // we identify a view looking for a source namespace (sourceName) in stats
-    sourceName
-    ? VIEW
-    : COLLECTION;
+      sourceName
+      ? VIEW
+      : COLLECTION;
 
   const cacheKey = JSON.stringify({
     serverVersion,
@@ -108,7 +108,7 @@ export const filterStageOperators = ({
 
   FilteredStagesCache.set(cacheKey, filteredStages);
 
-  return filteredStages as FilteredStageOperators;
+  return filteredStages;
 };
 
 export function getStageOperator(
@@ -335,7 +335,7 @@ export function applyFeatureFlagChangesToFilteredOperators(
           meta: VECTOR_SEARCH_AUTO_EMBED_STAGE.meta as Completion['meta'],
         }
       : op
-  ) as FilteredStageOperators;
+  );
 }
 
 const stageOperatorsMapByPreviewFlag = new Map<

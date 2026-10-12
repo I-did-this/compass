@@ -15,7 +15,7 @@ import {
   type ValidationLevel,
 } from '../modules/validation';
 import { fetchSampleDocuments } from '../modules/sample-documents';
-import { stringify as javascriptStringify } from 'javascript-stringify';
+import { toJSString } from '@mongodb-js/shell-bson-parser';
 import type { Store } from 'redux';
 import type { RootAction, RootState } from '../modules';
 import { onActivated } from './store';
@@ -50,7 +50,7 @@ const fakeDataService = {
         await new Promise((resolve) => setTimeout(resolve, 0));
         yield* [{ prop1: 'abc' }];
       },
-    } as any),
+    }) as any,
 } as any;
 
 const fakeWorkspaces = {
@@ -223,7 +223,7 @@ describe('Schema Validation Store', function () {
 
       it('updates the validation in state if succeed', function (done) {
         const unsubscribe = store.subscribe(() => {
-          const validator = javascriptStringify(validation.validator, null, 2);
+          const validator = toJSString(validation.validator, 2);
           const createdValidation = {
             validator,
             validationAction: 'warn',

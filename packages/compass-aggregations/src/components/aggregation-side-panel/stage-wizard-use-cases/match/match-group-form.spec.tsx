@@ -96,12 +96,10 @@ describe('group', function () {
       context('when group is rendered at nesting level 0', function () {
         it('should only render operator select and add nested group button', function () {
           const group = renderGroup({ nestingLevel: 0 });
-          expect(
-            screen.getByTestId(TEST_IDS.operatorSelect(group.id))
-          ).to.exist;
-          expect(
-            screen.getByTestId(TEST_IDS.addNestedGroupBtn(group.id))
-          ).to.exist;
+          expect(screen.getByTestId(TEST_IDS.operatorSelect(group.id))).to
+            .exist;
+          expect(screen.getByTestId(TEST_IDS.addNestedGroupBtn(group.id))).to
+            .exist;
           expect(() =>
             screen.getByTestId(TEST_IDS.removeGroupBtn(group.id))
           ).to.throw();
@@ -111,33 +109,28 @@ describe('group', function () {
       context('when group is rendered at nesting level 1', function () {
         it('should render operator select, add nested group button and remove group button', function () {
           const group = renderGroup({ nestingLevel: 1 });
-          expect(
-            screen.getByTestId(TEST_IDS.operatorSelect(group.id))
-          ).to.exist;
-          expect(
-            screen.getByTestId(TEST_IDS.addNestedGroupBtn(group.id))
-          ).to.exist;
-          expect(
-            screen.getByTestId(TEST_IDS.removeGroupBtn(group.id))
-          ).to.exist;
+          expect(screen.getByTestId(TEST_IDS.operatorSelect(group.id))).to
+            .exist;
+          expect(screen.getByTestId(TEST_IDS.addNestedGroupBtn(group.id))).to
+            .exist;
+          expect(screen.getByTestId(TEST_IDS.removeGroupBtn(group.id))).to
+            .exist;
         });
       });
 
       context('when group is rendered at nesting level 3', function () {
         it('should render operator select, a disabled add nested group button and remove group button', function () {
           const group = renderGroup({ nestingLevel: 3 });
-          expect(
-            screen.getByTestId(TEST_IDS.operatorSelect(group.id))
-          ).to.exist;
+          expect(screen.getByTestId(TEST_IDS.operatorSelect(group.id))).to
+            .exist;
           const addNestedGroupBtn = screen.getByTestId(
             TEST_IDS.addNestedGroupBtn(group.id)
           );
           expect(addNestedGroupBtn.getAttribute('aria-disabled')).to.equal(
             'true'
           );
-          expect(
-            screen.getByTestId(TEST_IDS.removeGroupBtn(group.id))
-          ).to.exist;
+          expect(screen.getByTestId(TEST_IDS.removeGroupBtn(group.id))).to
+            .exist;
         });
       });
     });
@@ -291,7 +284,7 @@ describe('group', function () {
       });
     });
 
-    it('should call onGroupChange with modified set of conditions when a condition is changed', function () {
+    it('should call onGroupChange with modified set of conditions when a condition is changed', async function () {
       const conditionA = createCondition();
       const onGroupChangeSpy = Sinon.spy();
       const group = createGroup({
@@ -299,7 +292,7 @@ describe('group', function () {
       });
       renderGroup({ group, onGroupChange: onGroupChangeSpy });
 
-      setComboboxValue(
+      await setComboboxValue(
         new RegExp(SINGLE_SELECT_LABEL, 'i'),
         '_id',
         screen.getByTestId(CONDITION_TEST_IDS.condition(conditionA.id))

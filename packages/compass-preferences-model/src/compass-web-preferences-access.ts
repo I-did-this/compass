@@ -1,26 +1,40 @@
 import { createNoopLogger } from '@mongodb-js/compass-logging/provider';
 import { Preferences, type PreferencesAccess } from './preferences';
-import type { UserPreferences } from './preferences-schema';
-import { type AllPreferences } from './preferences-schema';
+import type {
+  AllPreferences,
+  UserPreferences,
+  CompassRunningEnvironment,
+} from './preferences-schema';
 import { InMemoryStorage } from './preferences-in-memory-storage';
 import { getActiveUser } from './utils';
 import type { ParsedGlobalPreferencesResult } from './global-config';
+import type { AtlasPreferencesStorage } from './preferences-atlas';
 
 export class CompassWebPreferencesAccess implements PreferencesAccess {
   private _preferences: Preferences;
+  private _runningEnvironment: CompassRunningEnvironment;
   constructor(
     preferencesOverrides?: Partial<AllPreferences>,
-    globalPreferences?: Partial<ParsedGlobalPreferencesResult>
+    globalPreferences?: Partial<ParsedGlobalPreferencesResult>,
+    runningEnvironment: CompassRunningEnvironment = 'atlas',
+    persistentStorage?: AtlasPreferencesStorage
   ) {
+    this._runningEnvironment = runningEnvironment;
     this._preferences = new Preferences({
       logger: createNoopLogger(),
-      preferencesStorage: new InMemoryStorage(preferencesOverrides),
+      preferencesStorage:
+        persistentStorage ?? new InMemoryStorage(preferencesOverrides),
       globalPreferences,
+      runningEnvironment,
     });
   }
 
-  savePreferences(_attributes: Partial<UserPreferences>) {
-    return this._preferences.savePreferences(_attributes);
+  async setupStorage(): Promise<void> {
+    await this._preferences.setupStorage();
+  }
+
+  savePreferences(attributes: Partial<UserPreferences> = {}) {
+    return this._preferences.savePreferences(attributes);
   }
 
   refreshPreferences() {
@@ -31,8 +45,8 @@ export class CompassWebPreferencesAccess implements PreferencesAccess {
     return this._preferences.getPreferences();
   }
 
-  getConfigurableUserPreferences() {
-    return Promise.resolve(this._preferences.getConfigurableUserPreferences());
+  getSettingsUIPreferences() {
+    return Promise.resolve(this._preferences.getSettingsUIPreferences());
   }
 
   getPreferenceStates() {
@@ -54,7 +68,11 @@ export class CompassWebPreferencesAccess implements PreferencesAccess {
 
   createSandbox() {
     return Promise.resolve(
-      new CompassWebPreferencesAccess(this.getPreferences())
+      new CompassWebPreferencesAccess(
+        this.getPreferences(),
+        undefined,
+        this._runningEnvironment
+      )
     );
   }
 

@@ -14,6 +14,7 @@ import {
   compactBytes,
   compactNumber,
   InlineDefinition,
+  nbsp,
 } from '@mongodb-js/compass-components';
 import { ItemsTable, VirtualItemsTable } from './items-table';
 import type { CollectionProps } from 'mongodb-collection-model';
@@ -35,7 +36,9 @@ const collectionBadgesStyles = css({
   minHeight: 20,
 });
 
-const CollectionBadges: React.FunctionComponent = ({ children }) => {
+const CollectionBadges: React.FunctionComponent<{
+  children?: React.ReactNode;
+}> = ({ children }) => {
   return <div className={collectionBadgesStyles}>{children}</div>;
 };
 
@@ -64,7 +67,11 @@ const CollectionBadge: React.FunctionComponent<BadgeProp> = ({
   hint,
 }) => {
   const badge = useCallback(
-    ({ className, children, ...props } = {}) => {
+    ({
+      className,
+      children,
+      ...props
+    }: { className?: string; children?: React.ReactNode } = {}) => {
       return (
         <Badge
           data-testid={`collection-badge-${id}`}
@@ -109,13 +116,11 @@ function collectionPropertyToBadge(
         hint: (
           <>
             {Object.entries(options ?? {}).map(([key, val]) => {
-              return (
-                val && (
-                  <div key={key}>
-                    <strong>{key}:</strong>&nbsp;{val.toString()}
-                  </div>
-                )
-              );
+              return val ? (
+                <div key={key}>
+                  <strong>{key}:</strong>&nbsp;{String(val)}
+                </div>
+              ) : null;
             })}
           </>
         ),
@@ -234,7 +239,7 @@ function collectionColumns({
       minSize: 250,
       cell: (info) => {
         const collection = info.row.original;
-        const name = collection.name;
+        const name = nbsp(collection.name);
 
         return (
           <div className={collectionNameWrapStyles}>
@@ -321,9 +326,16 @@ function collectionColumns({
         }
 
         const storageSize = collection.storage_size;
-        const freeStorageSize = collection.free_storage_size ?? 0;
-        const usedStorageSize = storageSize - freeStorageSize;
         const displayValue = compactBytes(storageSize);
+
+        // Without freeStorageSize there is no total/used/free split to show, and
+        // rendering it as all-zeros would be wrong rather than merely empty.
+        if (collection.free_storage_size === undefined) {
+          return displayValue;
+        }
+
+        const freeStorageSize = collection.free_storage_size;
+        const usedStorageSize = storageSize - freeStorageSize;
 
         const definition = (
           <div>
@@ -471,6 +483,7 @@ const CollectionsList: React.FunctionComponent<{
   onDeleteCollectionClick?: (id: string) => void;
   onCreateCollectionClick?: () => void;
   onRefreshClick?: () => void;
+  isRefreshing?: boolean;
 }> = ({
   namespace,
   collections,
@@ -478,6 +491,7 @@ const CollectionsList: React.FunctionComponent<{
   onDeleteCollectionClick,
   onCreateCollectionClick,
   onRefreshClick,
+  isRefreshing,
 }) => {
   let virtual = true;
   if (process.env.COMPASS_DISABLE_VIRTUAL_TABLE_RENDERING === 'true') {
@@ -503,6 +517,7 @@ const CollectionsList: React.FunctionComponent<{
       onDeleteItemClick={onDeleteCollectionClick}
       onCreateItemClick={onCreateCollectionClick}
       onRefreshClick={onRefreshClick}
+      isRefreshing={isRefreshing}
     ></TableComponent>
   );
 };

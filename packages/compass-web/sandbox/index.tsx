@@ -69,4 +69,15 @@ const App = () => {
   );
 };
 
-ReactDOM.render(<App></App>, document.querySelector('#sandbox-app'));
+const sandboxContainer = document.querySelector('#sandbox-app');
+if (!sandboxContainer) {
+  throw new Error('Sandbox container not found');
+}
+
+// eslint-disable-next-line react/no-deprecated
+ReactDOM.render(
+  <React.StrictMode>
+    <App></App>
+  </React.StrictMode>,
+  sandboxContainer
+);

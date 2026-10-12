@@ -350,10 +350,10 @@ export function useJsonSchemaAutocompleter(
             documentation && typeof documentation === 'string'
               ? documentation
               : documentation &&
-                typeof documentation === 'object' &&
-                'value' in documentation
-              ? documentation.value
-              : undefined,
+                  typeof documentation === 'object' &&
+                  'value' in documentation
+                ? documentation.value
+                : undefined,
         };
 
         if (textEdit && 'range' in textEdit) {
@@ -552,10 +552,10 @@ export function useJsonSchemaAutocompleter(
             severity === 4
               ? 'hint'
               : severity === 3
-              ? 'info'
-              : severity === 2
-              ? 'warning'
-              : 'error',
+                ? 'info'
+                : severity === 2
+                  ? 'warning'
+                  : 'error',
         };
       });
 
@@ -571,13 +571,12 @@ export function useJsonSchemaAutocompleter(
     };
   }, [schema, text, editorConfig.extensions.length]);
 
-  // Compute hasErrors from annotations - both error and warning severity block validation
+  // Compute hasErrors from annotations - only error severity blocks validation.
   // Note: vscode-json-languageservice reports schema violations (missing required fields,
-  // type mismatches, etc.) as warnings, so we include them in validation blocking
+  // type mismatches, etc.) as warnings and only malformed JSON syntax as an error, so
+  // schema violations are surfaced as annotations without blocking the consumer's action.
   const hasErrors = useMemo(() => {
-    return annotations.some(
-      (a) => a.severity === 'error' || a.severity === 'warning'
-    );
+    return annotations.some((a) => a.severity === 'error');
   }, [annotations]);
 
   return {

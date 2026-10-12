@@ -45,12 +45,12 @@ import { isEqual, memoize } from 'lodash';
 import type { ImportConnectionOptions } from '@mongodb-js/connection-storage/provider';
 import { useInitialValue } from '@mongodb-js/compass-components';
 
-type ConnectionsStore = ReturnType<typeof configureStore> extends Store<
-  infer S,
-  infer A
-> & { dispatch: infer D }
-  ? { state: S; actions: A; dispatch: D }
-  : never;
+type ConnectionsStore =
+  ReturnType<typeof configureStore> extends Store<infer S, infer A> & {
+    dispatch: infer D;
+  }
+    ? { state: S; actions: A; dispatch: D }
+    : never;
 
 export const ConnectionsStoreContext = React.createContext<
   ReactReduxContextValue<ConnectionsStore['state']>
@@ -156,9 +156,9 @@ const ConnectionActionsContext = createContext<ReturnType<
  * spy on the actions if test requires it. Should not be exported from this
  * package
  */
-export const ConnectionActionsProvider: React.FunctionComponent = ({
-  children,
-}) => {
+export const ConnectionActionsProvider: React.FunctionComponent<{
+  children?: React.ReactNode;
+}> = ({ children }) => {
   const dispatch = useDispatch();
   const [actions] = useState(() => {
     return getConnectionsActions(dispatch);

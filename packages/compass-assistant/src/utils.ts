@@ -9,8 +9,9 @@ import type { AssistantMessage } from './compass-assistant-provider';
 import type { Chat } from './@ai-sdk/react/chat-react';
 import type { PreferencesAccess } from 'compass-preferences-model/provider';
 import type { Logger } from '@mongodb-js/compass-logging/provider';
+import { getAvailableTools } from '@mongodb-js/compass-generative-ai/provider';
 
-const ATLAS_CONNECTION_ERROR_DEBUGGER_TOOL_TYPE =
+export const ATLAS_CONNECTION_ERROR_DEBUGGER_TOOL_TYPE =
   'tool-atlas-connection-error-debugger';
 
 export type ToolState = 'idle' | 'running' | 'success' | 'error' | 'canceled';
@@ -267,6 +268,14 @@ export function getToolDisplayName(type: string): string {
 
 export function isDebuggerToolCall(type: string): boolean {
   return type === ATLAS_CONNECTION_ERROR_DEBUGGER_TOOL_TYPE;
+}
+
+export function getToolDescription(toolDisplayName: string): string {
+  return (
+    getAvailableTools({ enableAtlasConnectionErrorDebuggerTool: true }).find(
+      (tool) => tool.name === toolDisplayName
+    )?.description || ''
+  );
 }
 
 export function toolHasOutput(

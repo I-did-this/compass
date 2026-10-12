@@ -13,30 +13,30 @@ const AtlasAdminApiServiceContext = createContext<AtlasAdminApiService | null>(
   null
 );
 
-export const AtlasAdminApiServiceProvider: React.FC = createServiceProvider(
-  function AtlasAdminApiServiceProvider({ children }) {
-    const atlasService = atlasServiceLocator();
-    const authService = atlasAuthServiceLocator();
+export const AtlasAdminApiServiceProvider: React.FC<{
+  children?: React.ReactNode;
+}> = createServiceProvider(function AtlasAdminApiServiceProvider({ children }) {
+  const atlasService = atlasServiceLocator();
+  const authService = atlasAuthServiceLocator();
 
-    const adminApiService = useMemo(() => {
-      return new AtlasAdminApiService(atlasService);
-    }, [atlasService]);
+  const adminApiService = useMemo(() => {
+    return new AtlasAdminApiService(atlasService);
+  }, [atlasService]);
 
-    useEffect(() => {
-      const clearCache = () => adminApiService.clearCache();
-      authService.on('signed-out', clearCache);
-      return () => {
-        authService.off('signed-out', clearCache);
-      };
-    }, [authService, adminApiService]);
+  useEffect(() => {
+    const clearCache = () => adminApiService.clearCache();
+    authService.on('signed-out', clearCache);
+    return () => {
+      authService.off('signed-out', clearCache);
+    };
+  }, [authService, adminApiService]);
 
-    return (
-      <AtlasAdminApiServiceContext.Provider value={adminApiService}>
-        {children}
-      </AtlasAdminApiServiceContext.Provider>
-    );
-  }
-);
+  return (
+    <AtlasAdminApiServiceContext.Provider value={adminApiService}>
+      {children}
+    </AtlasAdminApiServiceContext.Provider>
+  );
+});
 
 function useAtlasAdminApiServiceContext(): AtlasAdminApiService {
   const service = useContext(AtlasAdminApiServiceContext);
@@ -64,4 +64,5 @@ export {
   type AtlasClusterState,
   type AtlasGroupCluster,
 } from './cluster-types';
+export { type AtlasSystemStatus } from './system-status-types';
 export { ATLAS_ADMIN_API_DEFAULT_VERSION } from './version';

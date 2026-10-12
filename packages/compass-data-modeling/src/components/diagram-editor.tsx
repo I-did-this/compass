@@ -93,6 +93,7 @@ const diagramStyles = css({
 
 const ErrorBannerWithRetry: React.FunctionComponent<{
   onRetryClick: () => void;
+  children?: React.ReactNode;
 }> = ({ children, onRetryClick }) => {
   return (
     <Banner variant="danger" className={errorBannerStyles}>
@@ -363,8 +364,8 @@ const DiagramContent: React.FunctionComponent<{
       const fieldPath = Array.isArray(id)
         ? id
         : typeof id === 'string'
-        ? [id]
-        : undefined;
+          ? [id]
+          : undefined;
       if (!fieldPath) {
         return;
       }
@@ -497,7 +498,7 @@ const DiagramContent: React.FunctionComponent<{
         onNodeExpandToggle: handleNodeExpandedToggle,
         onFieldExpandToggle: handleFieldExpandedToggle,
         fieldTypes: FIELD_TYPES,
-      } satisfies DiagramProps),
+      }) satisfies DiagramProps,
     [
       isDarkMode,
       diagramLabel,

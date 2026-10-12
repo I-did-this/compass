@@ -91,15 +91,6 @@ const editorStyle = css({
   fontFamily: fontFamilies.code,
 });
 
-const disabledContainerStyles = css({
-  borderRadius: spacing[100],
-  boxShadow: `0 0 0 1px ${palette.gray.light1}`,
-});
-
-const disabledContainerDarkModeStyles = css({
-  boxShadow: `0 0 0 1px ${palette.gray.dark2}`,
-});
-
 const readOnlyStyle = css({
   // We hide the blinking cursor in read only mode
   // as it can appear to users like the editor is editable.
@@ -172,6 +163,7 @@ export const editorPalette = {
     disabledColor: codePalette.light[2],
     disabledBackgroundColor: codePalette.light[1],
     gutterColor: codePalette.light[3],
+    gutterBackgroundColor: codePalette.light[0],
     gutterActiveLineBackgroundColor: rgba(palette.gray.light2, 0.5),
     gutterFoldButtonColor: palette.black,
     cursorColor: palette.gray.base,
@@ -197,6 +189,7 @@ export const editorPalette = {
     disabledColor: codePalette.dark[3],
     disabledBackgroundColor: palette.gray.dark3,
     gutterColor: codePalette.dark[3],
+    gutterBackgroundColor: codePalette.dark[0],
     gutterActiveLineBackgroundColor: rgba(palette.gray.dark2, 0.5),
     gutterFoldButtonColor: palette.white,
     cursorColor: palette.green.base,
@@ -223,6 +216,21 @@ const cmFontStyles = {
   fontFamily: fontFamilies.code,
 };
 
+const disabledContainerStyles = css({
+  borderRadius: spacing[100],
+  overflow: 'hidden',
+  boxShadow: `0 0 0 1px ${palette.gray.light1}`,
+  backgroundColor: editorPalette.light.disabledBackgroundColor,
+  '& .cm-editor, & .cm-gutters, & .cm-content[contenteditable="false"]': {
+    backgroundColor: 'transparent',
+  },
+});
+
+const disabledContainerDarkModeStyles = css({
+  boxShadow: `0 0 0 1px ${palette.gray.dark2}`,
+  backgroundColor: editorPalette.dark.disabledBackgroundColor,
+});
+
 function getStylesForTheme(theme: CodemirrorThemeType) {
   return EditorView.theme(
     {
@@ -240,13 +248,9 @@ function getStylesForTheme(theme: CodemirrorThemeType) {
         paddingBottom: `${spacing[100]}px`,
         caretColor: editorPalette[theme].cursorColor,
       },
-      '[contenteditable="false"] ': {
-        borderRadius: `${spacing[100]}px`,
-      },
       '.cm-content[contenteditable="false"] ': {
         cursor: 'not-allowed',
         color: editorPalette[theme].disabledColor,
-        backgroundColor: editorPalette[theme].disabledBackgroundColor,
       },
       '& .cm-activeLine': {
         background: 'none',
@@ -256,7 +260,7 @@ function getStylesForTheme(theme: CodemirrorThemeType) {
       },
       '& .cm-gutters': {
         color: editorPalette[theme].gutterColor,
-        backgroundColor: 'transparent',
+        backgroundColor: editorPalette[theme].gutterBackgroundColor,
         border: 'none',
       },
       '& .cm-gutter-lint': {
@@ -1480,9 +1484,12 @@ type InlineEditorProps = Omit<
     | { text?: never; initialText: string }
   );
 
-const inlineStyles = css({
+const inlineStylesLightMode = css({
   '& .cm-editor': {
-    backgroundColor: 'transparent',
+    backgroundColor: palette.white,
+  },
+  '& .cm-gutters': {
+    backgroundColor: `${palette.white} !important`,
   },
 });
 
@@ -1491,6 +1498,8 @@ const InlineEditor = React.forwardRef<EditorRef, InlineEditorProps>(
     { className, showAnnotationsGutter, ...props },
     forwardRef
   ) {
+    const darkMode = useDarkMode();
+
     return (
       <BaseEditor
         ref={forwardRef}
@@ -1500,7 +1509,10 @@ const InlineEditor = React.forwardRef<EditorRef, InlineEditorProps>(
         showAnnotationsGutter={Boolean(showAnnotationsGutter)}
         showScroll={false}
         highlightActiveLine={false}
-        className={cx(inlineStyles, className)}
+        className={cx(
+          !darkMode && !props.disabled && inlineStylesLightMode,
+          className
+        )}
         language="javascript-expression"
         {...props}
       ></BaseEditor>

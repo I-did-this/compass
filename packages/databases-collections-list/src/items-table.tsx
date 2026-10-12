@@ -32,6 +32,7 @@ import {
   Cell,
   ItemActionGroup,
   useLeafyGreenTable,
+  SpinLoader,
 } from '@mongodb-js/compass-components';
 import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
 import { useConnectionInfo } from '@mongodb-js/compass-connections/provider';
@@ -68,6 +69,7 @@ type ItemsTableProps<T> = {
   onDeleteItemClick?: (id: string) => void;
   onCreateItemClick?: () => void;
   onRefreshClick?: () => void;
+  isRefreshing?: boolean;
   renderLoadSampleDataBanner?: () => React.ReactNode;
 };
 
@@ -92,6 +94,10 @@ const controlStyles = css({
   flex: 'none',
 });
 
+const spinnerStyles = css({
+  display: 'flex',
+});
+
 const breadcrumbContainerStyles = css({
   display: 'flex',
   minWidth: 0,
@@ -114,12 +120,14 @@ const TableControls: React.FunctionComponent<{
   itemType: string;
   onCreateItemClick?: () => void;
   onRefreshClick?: () => void;
+  isRefreshing?: boolean;
   renderLoadSampleDataBanner?: () => React.ReactNode;
 }> = ({
   namespace,
   itemType,
   onCreateItemClick,
   onRefreshClick,
+  isRefreshing = false,
   renderLoadSampleDataBanner,
 }) => {
   const connectionInfo = useConnectionInfo();
@@ -235,8 +243,17 @@ const TableControls: React.FunctionComponent<{
             <div className={controlStyles} data-testid="refresh-controls">
               <Button
                 variant="default"
-                leftGlyph={<Icon role="presentation" glyph="Refresh" />}
+                leftGlyph={
+                  isRefreshing ? (
+                    <div className={spinnerStyles}>
+                      <SpinLoader title={`Refreshing ${itemType}s`} />
+                    </div>
+                  ) : (
+                    <Icon role="presentation" glyph="Refresh" />
+                  )
+                }
                 onClick={onRefreshClick}
+                disabled={isRefreshing}
                 size="small"
               >
                 Refresh
@@ -385,6 +402,7 @@ const ItemsTableInner = <T extends Item>({
   onItemClick,
   onCreateItemClick,
   onRefreshClick,
+  isRefreshing,
   renderLoadSampleDataBanner,
   tableContainerRef,
   table,
@@ -397,6 +415,7 @@ const ItemsTableInner = <T extends Item>({
   onItemClick: (id: string) => void;
   onCreateItemClick?: () => void;
   onRefreshClick?: () => void;
+  isRefreshing?: boolean;
   renderLoadSampleDataBanner?: () => React.ReactNode;
   tableContainerRef?: React.RefObject<HTMLDivElement>;
   table: LeafyGreenTable<T> | LeafyGreenVirtualTable<T>;
@@ -411,6 +430,7 @@ const ItemsTableInner = <T extends Item>({
             namespace={namespace}
             onCreateItemClick={onCreateItemClick}
             onRefreshClick={onRefreshClick}
+            isRefreshing={isRefreshing}
             renderLoadSampleDataBanner={renderLoadSampleDataBanner}
           ></TableControls>
         }
@@ -513,6 +533,7 @@ export const VirtualItemsTable = <T extends Item>({
   onDeleteItemClick,
   onCreateItemClick,
   onRefreshClick,
+  isRefreshing,
   renderLoadSampleDataBanner,
 }: ItemsTableProps<T>): React.ReactElement => {
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -536,6 +557,11 @@ export const VirtualItemsTable = <T extends Item>({
     },
     state: { sorting: sortState },
     onSortingChange: setSortState,
+    // These tables are not paginated. Leaving this on makes react-table reset
+    // the page index in a queued microtask when sorting or data changes, which
+    // can land after the tab is closed and warn about setting state on an
+    // unmounted component.
+    autoResetPageIndex: false,
   });
 
   const rowItems = mapVirtualRowItems(table);
@@ -549,6 +575,7 @@ export const VirtualItemsTable = <T extends Item>({
       onItemClick={onItemClick}
       onCreateItemClick={onCreateItemClick}
       onRefreshClick={onRefreshClick}
+      isRefreshing={isRefreshing}
       renderLoadSampleDataBanner={renderLoadSampleDataBanner}
       tableContainerRef={tableContainerRef}
       table={table}
@@ -577,6 +604,7 @@ export const ItemsTable = <T extends Item>({
   onDeleteItemClick,
   onCreateItemClick,
   onRefreshClick,
+  isRefreshing,
   renderLoadSampleDataBanner,
 }: ItemsTableProps<T>): React.ReactElement => {
   const columnsWithActions = useMemo(() => {
@@ -593,6 +621,8 @@ export const ItemsTable = <T extends Item>({
     columns: columnsWithActions,
     state: { sorting: sortState },
     onSortingChange: setSortState,
+    // See the note in VirtualItemsTable above.
+    autoResetPageIndex: false,
   });
 
   const rowItems = mapRowItems(table);
@@ -606,6 +636,7 @@ export const ItemsTable = <T extends Item>({
       onItemClick={onItemClick}
       onCreateItemClick={onCreateItemClick}
       onRefreshClick={onRefreshClick}
+      isRefreshing={isRefreshing}
       renderLoadSampleDataBanner={renderLoadSampleDataBanner}
       table={table}
       rowItems={rowItems}

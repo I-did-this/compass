@@ -64,6 +64,19 @@ export const FEATURE_FLAG_DEFINITIONS = [
   },
 
   /*
+   * Feature flag for AI Assistant's skills feature.
+   */
+
+  {
+    name: 'enableSkillsInAssistant',
+    stage: 'development',
+    atlasCloudFeatureScope: 'group',
+    description: {
+      short: 'Enable Skills in AI Assistant',
+    },
+  },
+
+  /*
    * Feature flag for AI Assistant's tool calling feature.
    */
   {
@@ -81,6 +94,15 @@ export const FEATURE_FLAG_DEFINITIONS = [
     atlasCloudFeatureScope: 'group',
     description: {
       short: 'Enable restoring previous workspace tabs on startup',
+    },
+  },
+
+  {
+    name: 'enableMockDataGenerator',
+    stage: 'released',
+    atlasCloudFeatureScope: 'group',
+    description: {
+      short: 'Enable generating mock data scripts with AI',
     },
   },
 
@@ -150,18 +172,6 @@ export const FEATURE_FLAG_DEFINITIONS = [
       short: 'Enable settings in compass web',
     },
   },
-
-  /*
-   * Feature flag for enabling the Atlas Connection Error Debugger.
-   */
-  {
-    name: 'enableAtlasConnectionErrorDebugger',
-    stage: 'development',
-    atlasCloudFeatureScope: 'group',
-    description: {
-      short: 'Enable Atlas Connection Error Debugger',
-    },
-  },
 ] as const satisfies ReadonlyArray<FeatureFlagDefinition>;
 
 type FeatureFlagDefinitions = typeof FEATURE_FLAG_DEFINITIONS;
@@ -187,6 +197,7 @@ function featureFlagToPreferenceDefinition(
     cli: true,
     global: true,
     ui: true,
+    exposedInSettingsUI: ['desktop', 'web'],
     description: featureFlag.description,
     // Only show feature flags in 'preview' stage in --help output
     omitFromHelp: featureFlag.stage !== 'preview',

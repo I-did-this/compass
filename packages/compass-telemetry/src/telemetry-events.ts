@@ -160,7 +160,28 @@ type AtlasSignInStartedEvent = CommonEvent<{
      * The surface of the application the sign in was triggered from.
      */
     entrypoint: AtlasSignInEntrypoint;
+    /**
+     * The current attempt of the sign in. If the attempt is bigger than 1,
+     * it means the user is re-trying to sign in after a previous attempt
+     * did not succeed.
+     */
+    attempt: number;
+    /**
+     * How the immediately preceding attempt ended, when this is a retry.
+     * Null on the first attempt.
+     */
+    previousOutcome: 'timed-out' | 'canceled' | 'error' | null;
   };
+}>;
+
+/**
+ * This event is fired when the user aborts the current sign in attempt.
+ *
+ * @category Atlas
+ */
+type AtlasSignInCanceledEvent = CommonEvent<{
+  name: 'Atlas Sign In Canceled';
+  payload: Record<string, never>;
 }>;
 
 /**
@@ -201,6 +222,22 @@ type AtlasSignInErrorEvent = CommonEvent<{
      * the error name otherwise.
      */
     error_code: string;
+  };
+}>;
+
+/**
+ * This event is fired when the user does not complete the sign in to their Atlas
+ * account on time.
+ *
+ * @category Atlas
+ */
+type AtlasSignInTimedOutEvent = CommonEvent<{
+  name: 'Atlas Sign In Timed Out';
+  payload: {
+    /**
+     * The surface of the application the sign in was triggered from.
+     */
+    entrypoint: AtlasSignInEntrypoint;
   };
 }>;
 
@@ -950,6 +987,28 @@ type ConnectionImportedEvent = CommonEvent<{
 }>;
 
 /**
+ * This event is fired when the user collapses all connections in the sidebar.
+ *
+ * @category Sidebar
+ */
+type SidebarConnectionsCollapsedAllEvent = CommonEvent<{
+  name: 'Sidebar Connections Collapsed All';
+  payload: Record<string, never>;
+}>;
+
+/**
+ * This event is fired when the user toggles the 'active connections only' filter in the sidebar.
+ *
+ * @category Sidebar
+ */
+type SidebarConnectionsActiveConnectionsFilterEvent = CommonEvent<{
+  name: 'Sidebar Connections Active Connections Filter Toggled';
+  payload: {
+    active_only: boolean;
+  };
+}>;
+
+/**
  * This event is fired when user copies a document to the clipboard.
  *
  * @category Documents
@@ -1008,6 +1067,63 @@ type DocumentClonedEvent = ConnectionScopedEvent<{
   payload: {
     /**
      * The view used to clone the document.
+     */
+    mode: 'list' | 'json' | 'table';
+  };
+}>;
+
+/**
+ * This event is fired when user adds a field to a document, either at the
+ * top level or nested inside an array/document.
+ *
+ * @category Documents
+ */
+type DocumentFieldAddedEvent = ConnectionScopedEvent<{
+  name: 'Document Field Added';
+  payload: {
+    /**
+     * Whether the field was added to the top level of the document or
+     * inside an array or document.
+     */
+    added_to: 'top_level' | 'array' | 'document';
+
+    /**
+     * The view in which the field was added.
+     */
+    mode: 'list' | 'table' | 'insert';
+  };
+}>;
+
+/**
+ * This event is fired when user removes a field from a document.
+ *
+ * @category Documents
+ */
+type DocumentFieldRemovedEvent = ConnectionScopedEvent<{
+  name: 'Document Field Removed';
+  payload: {
+    /**
+     * The BSON type of the removed field.
+     */
+    type: string;
+
+    /**
+     * The view in which the field was removed.
+     */
+    mode: 'list' | 'table' | 'insert';
+  };
+}>;
+
+/**
+ * This event is fired when user cancels editing of a document.
+ *
+ * @category Documents
+ */
+type DocumentUpdateCancelledEvent = ConnectionScopedEvent<{
+  name: 'Document Update Cancelled';
+  payload: {
+    /**
+     * The view used to edit the document.
      */
     mode: 'list' | 'json' | 'table';
   };
@@ -1471,6 +1587,58 @@ type IndexCreateOpenedEvent = ConnectionScopedEvent<{
   };
 }>;
 
+type CreateIndexEventPayload = {
+  /**
+   * Indicates whether the index is unique.
+   */
+  unique?: boolean;
+
+  /**
+   * Specifies the time-to-live (TTL) setting for the index.
+   */
+  ttl?: boolean;
+
+  /**
+   * Indicates whether the index is a columnstore index.
+   */
+  columnstore_index?: boolean;
+
+  /**
+   * Indicates if the index has a columnstore projection.
+   */
+  has_columnstore_projection?: boolean;
+
+  /**
+   * Indicates if the index has a partial filter expression.
+   */
+  has_partial_filter_expression?: boolean;
+
+  /**
+   * Indicates if the index includes a wildcard projection.
+   */
+  has_wildcard_projection?: boolean;
+
+  /**
+   * Specifies if the index uses a custom collation.
+   */
+  custom_collation?: boolean;
+
+  /**
+   * Indicates whether the index is a geospatial index.
+   */
+  geo?: boolean;
+
+  /**
+   * Indicates whether the index is an Atlas Search index.
+   */
+  atlas_search?: boolean;
+
+  /**
+   * Specifies the type of the index.
+   */
+  type?: string;
+};
+
 /**
  * This event is fired when user creates an index.
  *
@@ -1478,53 +1646,7 @@ type IndexCreateOpenedEvent = ConnectionScopedEvent<{
  */
 type IndexCreatedEvent = ConnectionScopedEvent<{
   name: 'Index Created';
-
-  payload: {
-    /**
-     * Indicates whether the index is unique.
-     */
-    unique?: boolean;
-
-    /**
-     * Specifies the time-to-live (TTL) setting for the index.
-     */
-    ttl?: any;
-
-    /**
-     * Indicates whether the index is a columnstore index.
-     */
-    columnstore_index?: boolean;
-
-    /**
-     * Indicates if the index has a columnstore projection.
-     */
-    has_columnstore_projection?: any;
-
-    /**
-     * Indicates if the index includes a wildcard projection.
-     */
-    has_wildcard_projection?: any;
-
-    /**
-     * Specifies if the index uses a custom collation.
-     */
-    custom_collation?: any;
-
-    /**
-     * Indicates whether the index is a geospatial index.
-     */
-    geo?: boolean;
-
-    /**
-     * Indicates whether the index is an Atlas Search index.
-     */
-    atlas_search?: boolean;
-
-    /**
-     * Specifies the type of the index.
-     */
-    type?: string;
-  };
+  payload: CreateIndexEventPayload;
 }>;
 
 /**
@@ -1534,53 +1656,7 @@ type IndexCreatedEvent = ConnectionScopedEvent<{
  */
 type IndexCreateFailedEvent = ConnectionScopedEvent<{
   name: 'Index Create Failed';
-
-  payload: {
-    /**
-     * Indicates whether the index is unique.
-     */
-    unique?: boolean;
-
-    /**
-     * Specifies the time-to-live (TTL) setting for the index.
-     */
-    ttl?: any;
-
-    /**
-     * Indicates whether the index is a columnstore index.
-     */
-    columnstore_index?: boolean;
-
-    /**
-     * Indicates if the index has a columnstore projection.
-     */
-    has_columnstore_projection?: any;
-
-    /**
-     * Indicates if the index includes a wildcard projection.
-     */
-    has_wildcard_projection?: any;
-
-    /**
-     * Specifies if the index uses a custom collation.
-     */
-    custom_collation?: any;
-
-    /**
-     * Indicates whether the index is a geospatial index.
-     */
-    geo?: boolean;
-
-    /**
-     * Indicates whether the index is an Atlas Search index.
-     */
-    atlas_search?: boolean;
-
-    /**
-     * Specifies the type of the index.
-     */
-    type?: string;
-  };
+  payload: CreateIndexEventPayload;
 }>;
 
 /**
@@ -1754,6 +1830,41 @@ type AssistantToolCallApprovalEvent = ConnectionScopedEvent<{
     approved: boolean;
     approval_id: string;
     request_id?: string;
+  };
+}>;
+
+/**
+ * This event is fired when the Atlas connection troubleshooting has completed.
+ *
+ * @category Assistant
+ */
+type AtlasConnectionErrorTroubleshootingSuccessEvent = CommonEvent<{
+  name: 'Atlas Connection Troubleshooting Success';
+  payload: {
+    /**
+     * The state of the cluster the user tried to connect to, as reported by
+     * Atlas, or `Unknown` when the cluster could not be found.
+     */
+    cluster_state: string;
+    /**
+     * Whether we could confirm that the user's IP address is allowed by the
+     * project's IP access list.
+     */
+    ip_access_status?: string;
+    duration: number;
+  };
+}>;
+
+/**
+ * This event is fired when the Atlas connection troubleshooting has failed.
+ *
+ * @category Assistant
+ */
+type AtlasConnectionErrorTroubleshootingFailedEvent = CommonEvent<{
+  name: 'Atlas Connection Troubleshooting Failed';
+  payload: {
+    error_name: string;
+    error_code: string;
   };
 }>;
 
@@ -3567,13 +3678,9 @@ type ContextMenuItemClicked = CommonEvent<{
 
 // Types for the Mock Data Generator events
 type MockDataGeneratorScreen =
-  | 'SCHEMA_CONFIRMATION'
-  | 'PREVIEW_AND_DOC_COUNT'
-  | 'SCRIPT_RESULT';
+  'SCHEMA_CONFIRMATION' | 'PREVIEW_AND_DOC_COUNT' | 'SCRIPT_RESULT';
 type MockDataScriptStep =
-  | 'install fakerjs'
-  | 'create js file'
-  | 'mongosh script';
+  'install fakerjs' | 'create js file' | 'mongosh script';
 
 /**
  * This event is fired when the Mock Data Generator CTA button is viewed.
@@ -4181,6 +4288,8 @@ export type TelemetryEvent =
   | AssistantEntryPointUsedEvent
   | AssistantConfirmationSubmittedEvent
   | AssistantResponseGeneratedEvent
+  | AtlasConnectionErrorTroubleshootingSuccessEvent
+  | AtlasConnectionErrorTroubleshootingFailedEvent
   | AiOptInModalShownEvent
   | AiOptInModalDismissedEvent
   | AiGenerateQueryClickedEvent
@@ -4192,7 +4301,9 @@ export type TelemetryEvent =
   | ApplicationLaunchedEvent
   | AtlasLinkClickedEvent
   | AtlasSearchIndexesForViewLinkClickedEvent
+  | AtlasSignInCanceledEvent
   | AtlasSignInErrorEvent
+  | AtlasSignInTimedOutEvent
   | AtlasSignInPromptShownEvent
   | AtlasSignInStartedEvent
   | AtlasSignInSuccessEvent
@@ -4251,9 +4362,12 @@ export type TelemetryEvent =
   | DocumentClonedEvent
   | DocumentCopiedEvent
   | DocumentDeletedEvent
+  | DocumentFieldAddedEvent
+  | DocumentFieldRemovedEvent
   | DocumentInsertCancelledEvent
   | DocumentInsertFailedEvent
   | DocumentInsertedEvent
+  | DocumentUpdateCancelledEvent
   | DocumentUpdatedEvent
   | DocumentViewChangedEvent
   | DrawerSectionOpenedEvent
@@ -4362,6 +4476,8 @@ export type TelemetryEvent =
   | SearchIndexCreateCancelledEvent
   | SearchIndexEditSubmittedEvent
   | SearchIndexEditCancelledEvent
+  | SidebarConnectionsCollapsedAllEvent
+  | SidebarConnectionsActiveConnectionsFilterEvent
   | ManageSearchIndexesLinkClickedEvent
   | RenderProcessGoneEvent
   | SearchIndexStatusDetailsLinkClickedEvent

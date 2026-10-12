@@ -1,5 +1,4 @@
 import type * as plugin from '@mongodb-js/oidc-plugin';
-import type { PreferencesAccess } from 'compass-preferences-model';
 import { defaultsDeep } from 'lodash';
 import { createHash } from 'crypto';
 
@@ -29,18 +28,14 @@ export class AtlasServiceError extends Error {
   }
 }
 
-export function throwIfNetworkTrafficDisabled(
-  preferences: Pick<PreferencesAccess, 'getPreferences'>
-) {
-  if (!preferences.getPreferences().networkTraffic) {
+export function throwIfNetworkTrafficDisabled(networkTraffic: boolean) {
+  if (!networkTraffic) {
     throw new Error('Network traffic is not allowed');
   }
 }
 
-export function throwIfAtlasSignInDisabled(
-  preferences: Pick<PreferencesAccess, 'getPreferences'>
-) {
-  if (!preferences.getPreferences().enableAtlasSignIn) {
+export function throwIfAtlasSignInDisabled(enableAtlasSignIn: boolean) {
+  if (!enableAtlasSignIn) {
     throw new Error('Atlas sign in is not allowed');
   }
 }
@@ -108,6 +103,10 @@ export type AtlasServiceConfig = {
    */
   cloudBaseUrl: string;
   /**
+   * Atlas UI base url. Used from desktop to open Atlas UI links in the browser.
+   */
+  atlasUiBaseUrl: string;
+  /**
    * Atlas private API base url
    */
   atlasPrivateApiBaseUrl: string;
@@ -145,6 +144,7 @@ const config = Object.create({
     ccsBaseUrl: 'ws://localhost:61001/ws',
     multiplexedWsBaseUrls: ['ws://cloud-local.mmscloudteam.com/ccs'],
     cloudBaseUrl: '',
+    atlasUiBaseUrl: 'https://cloud-local.mmscloudteam.com',
     atlasPrivateApiBaseUrl: 'http://cloud-local.mmscloudteam.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud-local.mmscloudteam.com/api/atlas',
     atlasLogin: {
@@ -161,6 +161,7 @@ const config = Object.create({
       'wss://cluster-connection.cloud-dev.mongodb.com/ccs',
     ],
     cloudBaseUrl: '',
+    atlasUiBaseUrl: 'https://cloud-dev.mongodb.com',
     atlasPrivateApiBaseUrl: 'https://cloud-dev.mongodb.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud-dev.mongodb.com/api/atlas',
     atlasLogin: {
@@ -177,6 +178,7 @@ const config = Object.create({
       'wss://cluster-connection.cloud-qa.mongodb.com/ccs',
     ],
     cloudBaseUrl: '',
+    atlasUiBaseUrl: 'https://cloud-qa.mongodb.com',
     atlasPrivateApiBaseUrl: 'https://cloud-qa.mongodb.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud-qa.mongodb.com/api/atlas',
     atlasLogin: {
@@ -193,6 +195,7 @@ const config = Object.create({
       'wss://cluster-connection.cloud-stage.mongodb.com/ccs',
     ],
     cloudBaseUrl: '',
+    atlasUiBaseUrl: 'https://cloud-stage.mongodb.com',
     atlasPrivateApiBaseUrl: 'https://cloud-stage.mongodb.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud-stage.mongodb.com/api/atlas',
     atlasLogin: {
@@ -210,6 +213,7 @@ const config = Object.create({
       'wss://cluster-connection.cloud.mongodb.com/ccs',
     ],
     cloudBaseUrl: '',
+    atlasUiBaseUrl: 'https://cloud.mongodb.com',
     atlasPrivateApiBaseUrl: 'https://cloud.mongodb.com/api/private',
     atlasAdminApiBaseUrl: 'https://cloud.mongodb.com/api/atlas',
     atlasLogin: {
@@ -221,14 +225,17 @@ const config = Object.create({
   },
 });
 
-export function getAtlasConfig(
-  preferences: Pick<PreferencesAccess, 'getPreferences'>
+export type AtlasServiceBackendPreset =
+  'atlas-local' | 'atlas-dev' | 'atlas-qa' | 'atlas-staging' | 'atlas';
+
+export function getAtlasConfigForPreset(
+  atlasServiceBackendPreset: AtlasServiceBackendPreset
 ) {
-  const { atlasServiceBackendPreset } = preferences.getPreferences();
   const envConfig = {
     atlasPrivateApiBaseUrl:
       process.env.COMPASS_ATLAS_SERVICE_UNAUTH_BASE_URL_OVERRIDE,
     cloudBaseUrl: process.env.COMPASS_CLOUD_BASE_URL_OVERRIDE,
+    atlasUiBaseUrl: process.env.COMPASS_CLOUD_UI_BASE_URL_OVERRIDE,
     atlasLogin: {
       clientId: process.env.COMPASS_CLIENT_ID_OVERRIDE,
       issuer: process.env.COMPASS_OIDC_ISSUER_OVERRIDE,

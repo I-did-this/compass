@@ -43,7 +43,7 @@ export class TestMongoDBInstanceManager extends MongoDBInstancesManager {
     super();
     if (!instanceProps.preferences) {
       instanceProps.preferences = {
-        getPreferences: () => ({} as AllPreferences),
+        getPreferences: () => ({}) as AllPreferences,
         setPreferences: () => Promise.resolve(),
         onPreferenceValueChanged: () => () => {
           /* no-op */
@@ -64,9 +64,7 @@ export class TestMongoDBInstanceManager extends MongoDBInstancesManager {
 // that includes default preferences
 export const MongoDBInstancesManagerContext =
   createContext<MongoDBInstancesManager | null>(
-    process.env.NODE_ENV === 'test'
-      ? (new TestMongoDBInstanceManager() as unknown as MongoDBInstancesManager)
-      : null
+    process.env.NODE_ENV === 'test' ? new TestMongoDBInstanceManager() : null
   );
 
 export const MongoDBInstancesManagerProvider =

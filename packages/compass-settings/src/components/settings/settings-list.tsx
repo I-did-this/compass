@@ -55,9 +55,7 @@ type StringPreferences = KeysMatching<
 >;
 type StringEnumPreferences = keyof typeof ENUM_PREFERENCE_CONFIG;
 export type SupportedPreferences =
-  | BooleanPreferences
-  | NumericPreferences
-  | StringPreferences;
+  BooleanPreferences | NumericPreferences | StringPreferences;
 
 const inputStyles = css({
   marginTop: spacing[400],
@@ -76,7 +74,7 @@ const fieldContainerStyles = css({
 });
 
 type HandleChange<PreferenceName extends SupportedPreferences> = <
-  N extends PreferenceName
+  N extends PreferenceName,
 >(
   field: N,
   value: UserConfigurablePreferences[N]
@@ -94,9 +92,10 @@ function SettingLabel<PreferenceName extends SupportedPreferences>({
   value: UserConfigurablePreferences[PreferenceName] | undefined;
 }) {
   const { short, long } = getSettingDescription(name).description;
-  const SettingDescription = SETTINGS_DESCRIPTIONS_MAP[name] as
-    | SettingsDescriptionComponent<PreferenceName>
-    | undefined;
+  const SettingDescription = SETTINGS_DESCRIPTIONS_MAP[
+    name
+  ] as SettingsDescriptionComponent<PreferenceName>;
+
   const featureFlagDefinition = featureFlags.find((definition) => {
     return definition.name === name;
   });
@@ -331,6 +330,7 @@ function StringSetting<PreferenceName extends StringPreferences>({
 }
 
 type AnySetting = {
+  isConfigurableUserPreference: boolean;
   name: string;
   type: unknown;
   value?: unknown;
@@ -349,6 +349,7 @@ function isStringEnumPreference(name: string): name is StringEnumPreferences {
 
 function isSupported(props: AnySetting): props is
   | {
+      isConfigurableUserPreference: true;
       name: StringPreferences;
       type: 'string';
       value?: string;
@@ -356,12 +357,14 @@ function isSupported(props: AnySetting): props is
     }
   | {
       name: NumericPreferences;
+      isConfigurableUserPreference: true;
       type: 'number';
       value?: number;
       onChange: HandleChange<NumericPreferences>;
     }
   | {
       name: BooleanPreferences;
+      isConfigurableUserPreference: true;
       type: 'boolean';
       value?: boolean;
       onChange: HandleChange<BooleanPreferences>;
@@ -374,7 +377,10 @@ function SettingsInput({
   disabled = false,
   required = false,
   ...props
-}: SettingsInputProps): React.ReactElement {
+}: SettingsInputProps): React.ReactElement | null {
+  if (props.isConfigurableUserPreference !== true) {
+    return null;
+  }
   if (!isSupported(props)) {
     throw new Error(
       `Do not know how to render type ${String(props.type)} for preference ${
@@ -443,9 +449,13 @@ const ConnectedSettingsInput = connect(
       settings: { settings, preferenceStates },
     } = state;
     const { name } = ownProps;
-    const { type } = getSettingDescription(name);
+    const isConfigurableUserPreference = name in settings;
+    const { type } = isConfigurableUserPreference
+      ? getSettingDescription(name)
+      : {};
 
     return {
+      isConfigurableUserPreference,
       value: settings[name],
       type: type,
       disabled: !!preferenceStates[name],

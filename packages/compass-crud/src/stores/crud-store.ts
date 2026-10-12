@@ -9,7 +9,8 @@ import HadronDocument, {
   Document,
   objectToIdiomaticEJSON,
 } from 'hadron-document';
-import { toJSString, validate } from 'mongodb-query-parser';
+import { validate } from 'mongodb-query-parser';
+import { toJSString } from '@mongodb-js/shell-bson-parser';
 import _parseShellBSON, { ParseMode } from '@mongodb-js/shell-bson-parser';
 import type { PreferencesAccess } from 'compass-preferences-model/provider';
 import { capMaxTimeMSAtPreferenceLimit } from 'compass-preferences-model/provider';
@@ -412,7 +413,7 @@ class CrudStoreImpl
   instance: MongoDBInstance;
   connectionScopedAppRegistry: ConnectionScopedAppRegistry<EmittedAppRegistryEvents>;
   queryBar: QueryBarService;
-  collection: Collection;
+  collectionModel: Collection;
 
   constructor(
     options: CrudStoreOptions & CrudStoreActionsOptions,
@@ -448,7 +449,7 @@ class CrudStoreImpl
     this.fieldStoreService = services.fieldStoreService;
     this.connectionScopedAppRegistry = services.connectionScopedAppRegistry;
     this.queryBar = services.queryBar;
-    this.collection = services.collection;
+    this.collectionModel = services.collection;
   }
 
   getInitialState(): CrudState {
@@ -488,7 +489,7 @@ class CrudStoreImpl
       isUpdatePreviewSupported:
         this.instance.topologyDescription.type !== 'Single',
       docsPerPage: this.getInitialDocsPerPage(),
-      collectionStats: extractCollectionStats(this.collection),
+      collectionStats: extractCollectionStats(this.collectionModel),
     };
   }
 
@@ -1731,16 +1732,16 @@ class CrudStoreImpl
           default_sort: !defaultSortOrder
             ? 'none'
             : /_id/.test(defaultSortOrder)
-            ? '_id'
-            : 'natural',
+              ? '_id'
+              : 'natural',
           has_limit: (query.limit ?? 0) > 0,
           has_collation: !!query.collation,
           changed_maxtimems: query.maxTimeMS !== DEFAULT_INITIAL_MAX_TIME_MS,
           collection_type: isTimeSeries
             ? 'time-series'
             : isReadonly
-            ? 'readonly'
-            : 'collection',
+              ? 'readonly'
+              : 'collection',
           used_regex: objectContainsRegularExpression(query.filter ?? {}),
           mode: this.modeForTelemetry(),
         },
@@ -2135,6 +2136,7 @@ class CrudStoreImpl
         collation: query.collation ? toJSString(query.collation) : undefined,
         skip: query.skip ? String(query.skip) : undefined,
         limit: query.limit ? String(query.limit) : undefined,
+        maxTimeMS: query.maxTimeMS ? String(query.maxTimeMS) : undefined,
       },
       'Query'
     );
@@ -2328,7 +2330,7 @@ function resultId() {
 type ErrorOrResult =
   | [
       error: { message: string; code?: number; codeName?: string },
-      result: undefined
+      result: undefined,
     ]
   | [error: undefined | null, result: BSONObject];
 
@@ -2339,17 +2341,18 @@ export async function findAndModifyWithFLEFallback(
   object: { $set?: BSONObject; $unset?: BSONObject } | BSONObject | BSONArray,
   modificationType: 'update' | 'replace'
 ): Promise<ErrorOrResult> {
-  const findOneAndModifyMethod =
-    modificationType === 'update' ? 'findOneAndUpdate' : 'findOneAndReplace';
   let error: (Error & { codeName?: string; code?: any }) | undefined;
 
+  const options = {
+    returnDocument: 'after',
+    promoteValues: false,
+  } as const;
   try {
     return [
       undefined,
-      await ds[findOneAndModifyMethod](ns, query, object, {
-        returnDocument: 'after',
-        promoteValues: false,
-      }),
+      await (modificationType === 'update'
+        ? ds.findOneAndUpdate(ns, query, object, options)
+        : ds.findOneAndReplace(ns, query, object, options)),
     ] as ErrorOrResult;
   } catch (e) {
     error = e as Error;
@@ -2359,11 +2362,10 @@ export async function findAndModifyWithFLEFallback(
     error.codeName === 'ShardKeyNotFound' ||
     +(error?.code ?? 0) === 63714_02 // 6371402 is "'findAndModify with encryption only supports new: false'"
   ) {
-    const modifyOneMethod =
-      modificationType === 'update' ? 'updateOne' : 'replaceOne';
-
     try {
-      await ds[modifyOneMethod](ns, query, object);
+      await (modificationType === 'update'
+        ? ds.updateOne(ns, query, object)
+        : ds.replaceOne(ns, query, object));
     } catch (e) {
       // Return the modifyOneMethod error here
       // since we already know the original error from findOneAndModifyMethod
@@ -2426,8 +2428,8 @@ function insertModeForTelemetry(
   return view === 'list'
     ? 'field-by-field'
     : view === 'shell'
-    ? 'shell'
-    : 'json';
+      ? 'shell'
+      : 'json';
 }
 
 /**
@@ -2491,7 +2493,7 @@ function serializeInsertDocument(
     return '';
   }
   return view === 'shell'
-    ? toJSString(doc.generateObject()) ?? ''
+    ? (toJSString(doc.generateObject()) ?? '')
     : doc.toEJSON();
 }
 
@@ -2513,7 +2515,7 @@ function convertInsertText(
         ? parseShellBSON(text)
         : EJSON.parse(text, { relaxed: false });
     return to === 'shell'
-      ? toJSString(value) ?? text
+      ? (toJSString(value) ?? text)
       : objectToIdiomaticEJSON(value);
   } catch {
     // This shouldn't happen as switching is disabled in

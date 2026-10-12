@@ -222,8 +222,8 @@ export default function reducer(
         action.reason === FetchReasons.POLL
           ? FetchStatuses.POLLING
           : action.reason === FetchReasons.REFRESH
-          ? FetchStatuses.REFRESHING
-          : FetchStatuses.FETCHING,
+            ? FetchStatuses.REFRESHING
+            : FetchStatuses.FETCHING,
     };
   }
 
@@ -620,6 +620,8 @@ export function createRegularIndex(
       unique: options.unique,
       ttl: typeof options.expireAfterSeconds !== 'undefined',
       columnstore_index: hasColumnstoreIndex(fieldsFromSpec),
+      has_partial_filter_expression:
+        typeof options.partialFilterExpression !== 'undefined',
       has_columnstore_projection:
         // @ts-expect-error columnstoreProjection is not a part of
         // CreateIndexesOptions yet.

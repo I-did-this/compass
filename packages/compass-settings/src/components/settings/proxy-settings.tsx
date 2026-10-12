@@ -30,6 +30,8 @@ interface ProxySettingsProps {
 
 type ProxyType = 'custom' | 'env' | 'no-proxy';
 
+export const proxyFields = ['proxy'] as const;
+
 const UnconnectedProxySettings: React.FunctionComponent<ProxySettingsProps> = ({
   onChange,
   proxy,
@@ -54,8 +56,8 @@ const UnconnectedProxySettings: React.FunctionComponent<ProxySettingsProps> = ({
     typeof proxyOptions.proxy === 'string'
       ? 'custom'
       : proxyOptions.useEnvironmentVariableProxies
-      ? 'env'
-      : 'no-proxy';
+        ? 'env'
+        : 'no-proxy';
   const setProxyType = useCallback(
     (ev: ChangeEvent<HTMLInputElement>) => {
       const type = ev.target.value as ProxyType;

@@ -5,11 +5,8 @@ import {
   useConnectionInfo,
   useConnectionsListRef,
 } from '@mongodb-js/compass-connections/provider';
-import {
-  WorkspaceTab,
-  type WorkspaceTabCoreProps,
-} from '@mongodb-js/compass-components';
-import type { WorkspacePluginProps } from '@mongodb-js/workspace-info';
+import { WorkspaceTab } from '@mongodb-js/compass-components';
+import type { PluginHeaderProps } from '@mongodb-js/workspace-info';
 
 import { type CollectionState } from './modules/collection-tab';
 
@@ -19,8 +16,7 @@ type PluginTitleProps = {
   isTimeSeries?: boolean;
   isReadonly?: boolean;
   sourceName?: string | null;
-} & WorkspaceTabCoreProps &
-  WorkspacePluginProps<typeof CollectionWorkspaceTitle>;
+} & PluginHeaderProps<typeof CollectionWorkspaceTitle>;
 
 function PluginTitle({
   editViewName,
@@ -39,8 +35,8 @@ function PluginTitle({
   const collectionType = isTimeSeries
     ? 'timeseries'
     : isReadonly
-    ? 'view'
-    : 'collection';
+      ? 'view'
+      : 'collection';
   // Similar to what we have in the collection breadcrumbs.
   const tooltip: [string, string][] = [
     ['Connection', connectionName || ''],
@@ -67,10 +63,10 @@ function PluginTitle({
         collectionType === 'view'
           ? 'Visibility'
           : collectionType === 'timeseries'
-          ? 'TimeSeries'
-          : inferredFromPrivileges
-          ? 'EmptyFolder'
-          : 'Folder'
+            ? 'TimeSeries'
+            : inferredFromPrivileges
+              ? 'EmptyFolder'
+              : 'Folder'
       }
       data-namespace={ns}
       inferredFromPrivileges={inferredFromPrivileges}
@@ -83,5 +79,6 @@ export const CollectionPluginTitleComponent = connect(
     isTimeSeries: state.metadata?.isTimeSeries,
     isReadonly: state.metadata?.isReadonly,
     sourceName: state.metadata?.sourceName,
-  })
+  }),
+  {}
 )(PluginTitle);

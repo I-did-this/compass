@@ -11,6 +11,7 @@ import type {
   DeriveValueFunction,
 } from './preferences-schema';
 import { allPreferencesProps } from './preferences-schema';
+import type { CompassRunningEnvironment } from './preferences-schema';
 import { InMemoryStorage } from './preferences-in-memory-storage';
 import type { PreferencesStorage } from './preferences-storage';
 import type { FeatureFlags } from './feature-flags';
@@ -22,7 +23,7 @@ export interface PreferencesAccess {
   ): Promise<AllPreferences>;
   refreshPreferences(): Promise<AllPreferences>;
   getPreferences(): AllPreferences;
-  getConfigurableUserPreferences(): Promise<UserConfigurablePreferences>;
+  getSettingsUIPreferences(): Promise<Partial<UserConfigurablePreferences>>;
   getPreferenceStates(): Promise<PreferenceStateInformation>;
   onPreferenceValueChanged<K extends keyof AllPreferences>(
     preferenceName: K,
@@ -47,6 +48,7 @@ export class Preferences {
   private _logger: Logger;
   private _onPreferencesChangedCallbacks: OnPreferencesChangedCallback[];
   private _preferencesStorage: PreferencesStorage;
+  private _runningEnvironment: CompassRunningEnvironment;
   private _globalPreferences: {
     cli: Partial<AllPreferences>;
     global: Partial<AllPreferences>;
@@ -55,18 +57,24 @@ export class Preferences {
     atlasCloudProject: Partial<FeatureFlags>;
     atlasCloudOrg: Partial<FeatureFlags>;
   };
+  // Saved values take precedence over cloud-provided ones for the rest of the
+  // session.
+  private _savedOverrides: Partial<AllPreferences> = {};
 
   constructor({
     logger,
     globalPreferences,
     preferencesStorage = new InMemoryStorage(),
+    runningEnvironment = 'desktop',
   }: {
     logger: Logger;
     preferencesStorage: PreferencesStorage;
     globalPreferences?: Partial<ParsedGlobalPreferencesResult>;
+    runningEnvironment: CompassRunningEnvironment;
   }) {
     this._logger = logger;
     this._preferencesStorage = preferencesStorage;
+    this._runningEnvironment = runningEnvironment;
 
     this._onPreferencesChangedCallbacks = [];
     this._globalPreferences = {
@@ -114,6 +122,7 @@ export class Preferences {
       logger,
       globalPreferences: global,
       preferencesStorage: new InMemoryStorage(),
+      runningEnvironment: 'desktop',
     });
     await instance.savePreferences(user);
     return instance;
@@ -140,9 +149,12 @@ export class Preferences {
       return originalPreferences;
     }
 
+    const previousOverrides = this._savedOverrides;
+    this._savedOverrides = { ...this._savedOverrides, ...attributes };
     try {
       await this._preferencesStorage.updatePreferences(attributes);
     } catch (err) {
+      this._savedOverrides = previousOverrides;
       this._logger.log.error(
         this._logger.mongoLogId(1_001_000_157),
         'preferences',
@@ -193,6 +205,10 @@ export class Preferences {
   private _getStoredValues(): AllPreferences {
     return {
       ...this._getUserPreferenceValues(),
+      ...this._globalPreferences.atlasCloudUser,
+      ...this._globalPreferences.atlasCloudProject,
+      ...this._globalPreferences.atlasCloudOrg,
+      ...this._savedOverrides,
       ...this._globalPreferences.cli,
       ...this._globalPreferences.global,
       ...this._globalPreferences.hardcoded,
@@ -207,16 +223,17 @@ export class Preferences {
   private _computePreferenceValuesAndStates() {
     const values = this._getStoredValues();
     const states: Partial<Record<string, PreferenceState>> = {};
-    for (const key of Object.keys(this._globalPreferences.cli))
-      states[key] = 'set-cli';
-    for (const key of Object.keys(this._globalPreferences.global))
-      states[key] = 'set-global';
     for (const key of Object.keys(this._globalPreferences.atlasCloudUser))
       states[key] = 'set-cloud-user';
     for (const key of Object.keys(this._globalPreferences.atlasCloudProject))
       states[key] = 'set-cloud-project';
     for (const key of Object.keys(this._globalPreferences.atlasCloudOrg))
       states[key] = 'set-cloud-org';
+    for (const key of Object.keys(this._savedOverrides)) delete states[key];
+    for (const key of Object.keys(this._globalPreferences.cli))
+      states[key] = 'set-cli';
+    for (const key of Object.keys(this._globalPreferences.global))
+      states[key] = 'set-global';
     for (const key of Object.keys(this._globalPreferences.hardcoded))
       states[key] = 'hardcoded';
 
@@ -256,18 +273,24 @@ export class Preferences {
   }
 
   /**
-   * Return the subset of preferences that can be edited through the UI.
+   * Return the subset of preferences that are exposed in the settings UI of the
+   * current running environment.
    *
-   * @returns The currently active set of UI-modifiable preferences.
+   * @returns The currently active set of settings UI preferences.
    */
-  getConfigurableUserPreferences(): UserConfigurablePreferences {
+  getSettingsUIPreferences(): Partial<UserConfigurablePreferences> {
     const preferences = this.getPreferences();
     return Object.fromEntries(
-      Object.entries(preferences).filter(
-        ([key]) =>
-          allPreferencesProps[key as keyof typeof preferences].ui === true
-      )
-    ) as UserConfigurablePreferences;
+      Object.entries(preferences).filter(([key]) => {
+        const { ui, exposedInSettingsUI } =
+          allPreferencesProps[key as keyof typeof preferences];
+        return (
+          ui === true &&
+          (exposedInSettingsUI === '*' ||
+            exposedInSettingsUI.includes(this._runningEnvironment))
+        );
+      })
+    );
   }
 
   /**

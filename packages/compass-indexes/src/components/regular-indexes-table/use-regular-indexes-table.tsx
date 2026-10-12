@@ -26,9 +26,7 @@ type MappedRollingIndex = RollingIndex & {
 };
 
 export type MergedIndex =
-  | MappedRegularIndex
-  | MappedInProgressIndex
-  | MappedRollingIndex;
+  MappedRegularIndex | MappedInProgressIndex | MappedRollingIndex;
 
 export type IndexInfo = {
   id: string;
@@ -41,7 +39,7 @@ export type IndexInfo = {
   properties: React.ReactNode;
   status: React.ReactNode;
   actions: undefined | React.ReactNode;
-  renderExpandedContent: React.ReactNode;
+  renderExpandedContent: () => React.ReactElement;
 };
 
 export type CommonIndexInfo = Omit<IndexInfo, 'renderExpandedContent'>;

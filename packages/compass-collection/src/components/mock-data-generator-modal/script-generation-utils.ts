@@ -5,11 +5,7 @@ import { UNRECOGNIZED_FAKER_METHOD } from '../../modules/collection-tab';
 import { faker } from '@faker-js/faker/locale/en';
 
 export type FakerArg =
-  | string
-  | number
-  | boolean
-  | { json: string }
-  | FakerArg[];
+  string | number | boolean | { json: string } | FakerArg[];
 
 const DEFAULT_ARRAY_LENGTH = 3;
 
@@ -28,8 +24,7 @@ export interface ScriptOptions {
 }
 
 export type ScriptResult =
-  | { script: string; success: true }
-  | { error: string; success: false };
+  { script: string; success: true } | { error: string; success: false };
 
 type DocumentStructure = {
   [fieldName: string]:
@@ -583,7 +578,7 @@ export function formatFakerArgs(fakerArgs: FakerArg[]): string {
       stringifiedArgs.push(`${arg}`);
     } else if (typeof arg === 'object' && arg !== null && 'json' in arg) {
       // Pre-serialized JSON objects
-      const jsonArg = arg as { json: string };
+      const jsonArg = arg;
       stringifiedArgs.push(jsonArg.json);
     } else {
       throw new Error(
@@ -712,7 +707,7 @@ function prepareFakerArgs(fakerArgs: FakerArg[]): unknown[] {
     } else if (typeof arg === 'object' && arg !== null && 'json' in arg) {
       // Parse JSON objects
       try {
-        const jsonArg = arg as { json: string };
+        const jsonArg = arg;
         preparedArgs.push(JSON.parse(jsonArg.json));
       } catch {
         // Skip invalid JSON

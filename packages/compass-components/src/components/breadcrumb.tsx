@@ -4,6 +4,7 @@ import { css, cx } from '@leafygreen-ui/emotion';
 import { palette } from '@leafygreen-ui/palette';
 import { useDarkMode } from '../hooks/use-theme';
 import { Link, Icon, Body } from './leafygreen';
+import { nbsp } from '../utils/nbsp';
 
 export type BreadcrumbItem = {
   name: string;
@@ -56,8 +57,7 @@ export const Breadcrumbs = ({
   className,
 }: {
   items:
-    | BreadcrumbItem[]
-    | [...BreadcrumbItem[], Omit<BreadcrumbItem, 'onClick'>];
+    BreadcrumbItem[] | [...BreadcrumbItem[], Omit<BreadcrumbItem, 'onClick'>];
   className?: string;
 }) => {
   const darkMode = useDarkMode();
@@ -89,7 +89,7 @@ export const Breadcrumbs = ({
                   darkMode ? itemDarkStyles : itemLightStyles
                 )}
               >
-                {item.name}
+                {nbsp(item.name)}
               </Body>
             </Link>
             <Icon
@@ -108,7 +108,7 @@ export const Breadcrumbs = ({
           darkMode ? lastItemStylesDark : lastItemStylesLight
         )}
       >
-        {lastItem.name}
+        {nbsp(lastItem.name)}
       </Body>
     </div>
   );
