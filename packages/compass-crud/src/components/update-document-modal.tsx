@@ -177,6 +177,14 @@ const modalContentStyles = css({
     display: 'flex',
     flexDirection: 'column',
   },
+  // CodeMirror parents its (empty) tooltip container to the closest <dialog>,
+  // and the shared full-screen styles give every direct div child
+  // height:100%. As an in-flow flex item that container would take the whole
+  // dialog height and collapse the Body wrapper above to 0px. A zero
+  // flex-basis overrides that height; out-of-flow children are unaffected.
+  '& > div:not(:first-of-type)': {
+    flex: '0 0 0',
+  },
 });
 
 // ModalBody is a flex sibling of ModalHeader inside the Body wrapper; grow it
