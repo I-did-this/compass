@@ -370,6 +370,7 @@ describe('store', function () {
         updateDocumentModal: {
           isOpen: false,
           doc: null,
+          focusField: undefined,
         },
         isCollectionScan: false,
         version: '6.0.0',
@@ -2008,6 +2009,31 @@ describe('store', function () {
             ns: 'compass-crud.test',
           });
           expect(emittedExtra).to.have.property('connectionId');
+        });
+
+        it('does not close a modal opened while an earlier refresh was still in flight', async function () {
+          const initialLoad = waitForState(store, (state) => {
+            expect(state.docs).to.have.length(2);
+          });
+          void store.refreshDocuments();
+          await initialLoad;
+
+          const doc = store.state.docs[0];
+
+          // Start a second refresh but don't await it yet - this mimics an
+          // auto-refresh (e.g. on navigation) that's still in flight when the
+          // user opens the Update Document modal.
+          const staleRefresh = store.refreshDocuments();
+
+          await store.openUpdateDocumentModal(doc);
+          expect(store.state.updateDocumentModal.isOpen).to.equal(true);
+          expect(store.state.updateDocumentModal.doc).to.not.equal(null);
+
+          // Let the stale refresh settle. It must not clobber the modal that
+          // opened after it started.
+          await staleRefresh;
+          expect(store.state.updateDocumentModal.isOpen).to.equal(true);
+          expect(store.state.updateDocumentModal.doc).to.not.equal(null);
         });
       });
 

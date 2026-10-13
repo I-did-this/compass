@@ -1718,6 +1718,14 @@ class CrudStoreImpl
       return;
     }
 
+    // Snapshot whether the modal was open when this refresh started. A
+    // refresh that was already in flight when the modal opened (e.g. an
+    // auto-refresh triggered by navigating to the collection) can resolve
+    // after the modal is showing a freshly-opened document; that document
+    // isn't stale just because an older refresh is only now settling, so
+    // only auto-close a modal that was open for the whole refresh.
+    const wasEditingWhenRefreshStarted = this.state.updateDocumentModal.isOpen;
+
     if (onApply) {
       const { isTimeSeries, isReadonly } = this.state;
       const { defaultSortOrder } = this.preferences.getPreferences();
@@ -1971,8 +1979,11 @@ class CrudStoreImpl
 
     // If the documents were refreshed while a document was open for editing,
     // the edited document no longer corresponds to what is in the list, so the
-    // edit state stands down rather than leaving it inconsistent.
-    if (this.state.updateDocumentModal.isOpen) {
+    // edit state stands down rather than leaving it inconsistent. Only applies
+    // if the modal was open for the whole refresh (see snapshot above) — a
+    // modal opened after this refresh started is editing a document from a
+    // newer, unrelated load and must not be closed out from under the user.
+    if (wasEditingWhenRefreshStarted && this.state.updateDocumentModal.isOpen) {
       this.closeUpdateDocumentModal();
     }
   }
