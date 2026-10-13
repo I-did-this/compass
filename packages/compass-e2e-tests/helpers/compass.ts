@@ -3,7 +3,7 @@ import { ObjectId, EJSON } from 'bson';
 import { promises as fs, rmdirSync } from 'fs';
 import type Mocha from 'mocha';
 import os from 'os';
-import { execFile } from 'child_process';
+import { exec, execFile } from 'child_process';
 import type { ExecFileOptions, ExecFileException } from 'child_process';
 import { promisify } from 'util';
 import zlib from 'zlib';
@@ -1050,7 +1050,7 @@ export async function rebuildNativeModules(
 export async function compileCompassAssets(
   compassPath = COMPASS_DESKTOP_PATH
 ): Promise<void> {
-  await promisify(execFile)('npm', ['run', 'compile'], { cwd: compassPath });
+  await promisify(exec)('npm run compile', { cwd: compassPath });
 }
 
 async function getCompassBuildMetadata(): Promise<BinPathOptions> {
