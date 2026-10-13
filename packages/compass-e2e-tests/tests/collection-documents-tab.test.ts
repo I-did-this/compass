@@ -469,8 +469,10 @@ FindIterable<Document> result = collection.find(filter)
     );
 
     // Editing now happens in the Update Document modal rather than inline.
+    // The wrench opens the modal; the pencil (EditDocumentButton) starts the
+    // separate inline editor.
     await browser.hover(Selectors.DocumentListEntry);
-    await browser.clickVisible(Selectors.EditDocumentButton);
+    await browser.clickVisible(Selectors.OpenUpdateDocumentModalButton);
     await browser.$(Selectors.UpdateDocumentModal).waitForDisplayed();
 
     const json = await browser.getCodemirrorEditorText(
@@ -511,9 +513,10 @@ FindIterable<Document> result = collection.find(filter)
       /^\{ "_id": \{ "\$oid": "[a-f0-9]{24}" \}, "i": 32, "j": 0 \}$/
     );
 
-    // The JSON view edit button now opens the Update Document modal.
+    // The wrench action in the JSON view's toolbar opens the Update Document
+    // modal; JSONEditDocumentButton starts the separate inline editor.
     await browser.hover(Selectors.JSONDocumentCard);
-    await browser.clickVisible(Selectors.JSONEditDocumentButton);
+    await browser.clickVisible(Selectors.JSONOpenUpdateDocumentModalButton);
     await browser.$(Selectors.UpdateDocumentModal).waitForDisplayed();
 
     const modalJson = await browser.getCodemirrorEditorText(
@@ -562,9 +565,10 @@ FindIterable<Document> result = collection.find(filter)
       /^\{ "_id": \{ "\$oid": "[a-f0-9]{24}" \}, "i": 123, "j": 0 \}$/
     );
 
-    // The JSON view edit button now opens the Update Document modal.
+    // The wrench action in the JSON view's toolbar opens the Update Document
+    // modal; JSONEditDocumentButton starts the separate inline editor.
     await browser.hover(Selectors.JSONDocumentCard);
-    await browser.clickVisible(Selectors.JSONEditDocumentButton);
+    await browser.clickVisible(Selectors.JSONOpenUpdateDocumentModalButton);
     await browser.$(Selectors.UpdateDocumentModal).waitForDisplayed();
 
     const modalJson = await browser.getCodemirrorEditorText(
@@ -942,8 +946,10 @@ FindIterable<Document> result = collection.find(filter)
         await document.waitForDisplayed();
 
         // Editing now happens in the Update Document modal rather than inline.
+        // The wrench opens the modal; the pencil (EditDocumentButton) starts
+        // the separate inline editor.
         await browser.hover(Selectors.DocumentListEntry);
-        await browser.clickVisible(Selectors.EditDocumentButton);
+        await browser.clickVisible(Selectors.OpenUpdateDocumentModalButton);
         await browser.$(Selectors.UpdateDocumentModal).waitForDisplayed();
 
         // rename the required field so the document fails server validation
@@ -999,9 +1005,10 @@ FindIterable<Document> result = collection.find(filter)
 
         await waitForJSON(browser, document);
 
-        // The JSON view edit button now opens the Update Document modal.
+        // The wrench action in the JSON view's toolbar opens the Update
+        // Document modal; JSONEditDocumentButton starts the inline editor.
         await browser.hover(Selectors.JSONDocumentCard);
-        await browser.clickVisible(Selectors.JSONEditDocumentButton);
+        await browser.clickVisible(Selectors.JSONOpenUpdateDocumentModalButton);
         await browser.$(Selectors.UpdateDocumentModal).waitForDisplayed();
 
         // remove the required field so the document fails server validation

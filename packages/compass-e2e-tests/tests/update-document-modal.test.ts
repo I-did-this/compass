@@ -264,10 +264,6 @@ describe('Update Document modal', function () {
       await browser.$(Selectors.UpdateDocumentModalExpandAllButton).isExisting()
     ).to.equal(false);
 
-    // Capture the visible JSON before collapsing so we can verify the click
-    // actually changed the editor's content (folded view is shorter).
-    const expandedJson = await readModalJson(browser);
-
     // Click collapses + re-formats. The button flips to "Expand all".
     await browser.clickVisible(Selectors.UpdateDocumentModalCollapseAllButton);
     await browser
@@ -279,13 +275,11 @@ describe('Update Document modal', function () {
         .isExisting()
     ).to.equal(false);
 
-    // Folded view collapses the document body to a placeholder, so the
-    // visible text shrinks. (Length-based check is robust to whitespace
-    // tweaks while still failing if the click does nothing.)
-    await browser.waitUntil(async () => {
-      const collapsedJson = await readModalJson(browser);
-      return collapsedJson.length < expandedJson.length;
-    });
+    // Folding only changes the rendered view (the document text is
+    // unchanged), so check for the fold placeholder the user sees.
+    await browser
+      .$(Selectors.UpdateDocumentModalFoldPlaceholder)
+      .waitForDisplayed();
 
     // Click again expands + re-formats. Button flips back to "Collapse all".
     await browser.hover(Selectors.UpdateDocumentModalJSONEditor);
@@ -293,9 +287,9 @@ describe('Update Document modal', function () {
     await browser
       .$(Selectors.UpdateDocumentModalCollapseAllButton)
       .waitForDisplayed();
-    await browser.waitUntil(async () => {
-      return (await readModalJson(browser)).length >= expandedJson.length;
-    });
+    await browser
+      .$(Selectors.UpdateDocumentModalFoldPlaceholder)
+      .waitForExist({ reverse: true });
 
     await browser.clickVisible(Selectors.UpdateDocumentModalCancelButton);
     await browser

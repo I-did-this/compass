@@ -647,6 +647,9 @@ export const UpdateDocumentButton = `${DocumentFooter} [data-testid="update-butt
 export const ConfirmDeleteDocumentButton = `${DocumentFooter} [data-testid="delete-button"]`;
 export const JSONDocumentCard = '[data-testid="editable-json"]';
 export const JSONEditDocumentButton = `${JSONDocumentCard} [data-testid="editor-action-Edit"]`;
+// Wrench action in the JSON view's editor toolbar: opens the Update Document
+// modal. Distinct from JSONEditDocumentButton, which starts inline editing.
+export const JSONOpenUpdateDocumentModalButton = `${JSONDocumentCard} [data-testid="editor-action-Update document"]`;
 export const JSONCopyDocumentButton = `${JSONDocumentCard} [data-testid="editor-action-Copy"]`;
 export const ShowMoreFieldsButton = '[data-testid="show-more-fields-button"]';
 export const BulkActionsButton =
@@ -683,6 +686,7 @@ export const UpdateDocumentModalCopyButton = `${UpdateDocumentModal} [data-testi
 // reads "Expand all". Tests can assert which is present to verify state.
 export const UpdateDocumentModalCollapseAllButton = `${UpdateDocumentModal} [data-testid="editor-action-Collapse all"]`;
 export const UpdateDocumentModalExpandAllButton = `${UpdateDocumentModal} [data-testid="editor-action-Expand all"]`;
+export const UpdateDocumentModalFoldPlaceholder = `${UpdateDocumentModal} .cm-foldPlaceholder`;
 export const UpdateDocumentModalEditorContainer =
   '[data-testid="update-document-editor-container"]';
 export const DocumentTableContainer = `.document-table-view-container`;
