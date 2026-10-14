@@ -102,7 +102,7 @@ export type CrudActions = {
   openUpdateDocumentModal(doc: Document, focusField?: string): Promise<void>;
   closeUpdateDocumentModal(): void;
   openInsertDocumentDialog(doc: BSONObject, cloned: boolean): Promise<void>;
-  copyToClipboard(doc: Document, format?: CopyDocumentFormat): void; //XXX
+  copyToClipboard(doc: Document, format?: CopyDocumentFormat): Promise<void>;
   openBulkDeleteDialog(): void;
   runBulkUpdate(): Promise<void>;
   closeBulkDeleteDialog(): void;
@@ -355,6 +355,9 @@ type CrudState = {
   abortController: AbortController | null;
   error: Error | null;
   docs: Document[] | null;
+  // Whether the user chose "Expand all documents". Kept across fetches so a
+  // new query, page or refresh renders its documents the same way.
+  allDocumentsExpanded: boolean;
   start: number;
   end: number;
   page: number;
@@ -462,6 +465,7 @@ class CrudStoreImpl
       abortController: null,
       error: null,
       docs: [],
+      allDocumentsExpanded: false,
       start: 0,
       version: this.instance.build.version,
       end: 0,
@@ -571,14 +575,76 @@ class CrudStoreImpl
     return this.state.view.toLowerCase() as Lowercase<DocumentView>;
   }
 
-  copyToClipboard(doc: Document, format: CopyDocumentFormat = 'ejson') {
+  /**
+   * With a projection applied, listed documents only contain the projected
+   * fields. Actions that work on the whole document (update, copy, clone)
+   * refetch it by _id. Resolves to null when there is no projection, the
+   * document has no _id, or the refetch fails.
+   */
+  async fetchFullDocumentIfProjected(id: unknown): Promise<BSONObject | null> {
+    const query = this.queryBar.getLastAppliedQuery('crud');
+    if (isEmpty(query?.project) || id === undefined) {
+      return null;
+    }
+    try {
+      const [fullDoc] = await this.dataService.find(
+        this.state.ns,
+        { _id: id as any },
+        { limit: 1 }
+      );
+      return fullDoc ?? null;
+    } catch (error) {
+      this.logger.log.warn(
+        mongoLogId(1_001_000_442),
+        'Documents',
+        'Failed to fetch the full document for a projected result',
+        { error: (error as Error).message }
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Copy and clone must not silently act on a partial document, so when a
+   * projection is applied and the full document can't be loaded, the action
+   * is abandoned with a toast instead.
+   */
+  async resolveFullDocumentForAction(
+    doc: BSONObject,
+    actionLabel: 'copy' | 'clone'
+  ): Promise<BSONObject | null> {
+    if (isEmpty(this.queryBar.getLastAppliedQuery('crud')?.project)) {
+      return doc;
+    }
+    const fullDoc = await this.fetchFullDocumentIfProjected(doc._id);
+    if (!fullDoc) {
+      openToast(`document-${actionLabel}-failed`, {
+        title: `Could not ${actionLabel} the document`,
+        description:
+          'A projection is applied and the full document could not be loaded.',
+        variant: 'warning',
+        dismissible: true,
+      });
+    }
+    return fullDoc;
+  }
+
+  async copyToClipboard(doc: Document, format: CopyDocumentFormat = 'ejson') {
     this.track(
       'Document Copied',
       { mode: this.modeForTelemetry(), format },
       this.connectionInfoRef.current
     );
-    const str = format === 'ejson' ? doc.toEJSON() : doc.toShellSyntax();
-    void navigator.clipboard.writeText(str);
+    const visibleDoc = doc.generateObject();
+    const fullDoc = await this.resolveFullDocumentForAction(visibleDoc, 'copy');
+    if (!fullDoc) {
+      return;
+    }
+    const docToCopy =
+      fullDoc === visibleDoc ? doc : new HadronDocument(fullDoc);
+    const str =
+      format === 'ejson' ? docToCopy.toEJSON() : docToCopy.toShellSyntax();
+    await navigator.clipboard.writeText(str);
   }
 
   getWriteError(error: Error): WriteError {
@@ -957,6 +1023,7 @@ class CrudStoreImpl
       error = err;
     }
 
+    this.applyDocumentsExpansion(documents);
     const length = error ? 0 : documents.length;
     this.setState({
       error,
@@ -1016,28 +1083,23 @@ class CrudStoreImpl
     // When the current query has a projection, `doc` only contains the
     // projected fields. JSON-mode Update calls replaceDocument(), which would
     // overwrite the server document with this partial payload and silently
-    // drop every unprojected field. Refetch the full document by _id so the
-    // modal always edits the complete document.
-    const query = this.queryBar.getLastAppliedQuery('crud');
-    const hasProjection = !isEmpty(query?.project);
-    let docToEdit: Document = doc;
-    if (hasProjection) {
-      const id = doc.getId();
-      if (id !== undefined) {
-        try {
-          const [fullDoc] = await this.dataService.find(
-            this.state.ns,
-            { _id: id as any },
-            { limit: 1 }
-          );
-          if (fullDoc) {
-            docToEdit = new HadronDocument(fullDoc);
-          }
-        } catch {
-          // Fall through with the original (projected) doc — better to let the
-          // user open the modal and see what they have than to silently fail.
-        }
-      }
+    // drop every unprojected field, so the modal edits the complete document.
+    // If the refetch fails, fall through with the projected doc — better to
+    // let the user open the modal and see what they have than to silently fail.
+    const fullDoc = await this.fetchFullDocumentIfProjected(doc.getId());
+    const docToEdit: Document = fullDoc ? new HadronDocument(fullDoc) : doc;
+
+    // List and JSON rows re-render from the edited document in place, but a
+    // refetched copy isn't the listed document, and the table grid only
+    // redraws when its rows change, so reload the page after a save.
+    if (docToEdit !== doc || this.state.view === 'Table') {
+      const onSaved = () => {
+        void this.refreshDocuments();
+      };
+      docToEdit.once(HadronDocument.Events.UpdateSuccess, onSaved);
+      docToEdit.once(HadronDocument.Events.EditingFinished, () => {
+        docToEdit.removeListener(HadronDocument.Events.UpdateSuccess, onSaved);
+      });
     }
     docToEdit.startEditing();
     this.setState({
@@ -1068,6 +1130,13 @@ class CrudStoreImpl
    * @param {Boolean} clone - Whether this is a clone operation.
    */
   async openInsertDocumentDialog(doc: BSONObject, clone = false) {
+    if (clone) {
+      const fullDoc = await this.resolveFullDocumentForAction(doc, 'clone');
+      if (!fullDoc) {
+        return;
+      }
+      doc = fullDoc;
+    }
     const hadronDoc = new HadronDocument(doc);
 
     if (clone) {
@@ -1645,6 +1714,24 @@ class CrudStoreImpl
   /**
    * The view has changed.
    */
+  expandAllDocuments() {
+    this.state.docs?.forEach((doc) => !doc.expanded && doc.expand());
+    this.setState({ allDocumentsExpanded: true });
+  }
+
+  collapseAllDocuments() {
+    this.state.docs?.forEach((doc) => doc.expanded && doc.collapse());
+    this.setState({ allDocumentsExpanded: false });
+  }
+
+  // Runs before the documents are put into state so that they mount already
+  // expanded instead of rendering folded and then unfolding.
+  applyDocumentsExpansion(docs: Document[]) {
+    if (this.state.allDocumentsExpanded) {
+      docs.forEach((doc) => doc.expand());
+    }
+  }
+
   viewChanged(view: DocumentView) {
     if (view !== this.state.view) {
       this.track(
@@ -1932,6 +2019,7 @@ class CrudStoreImpl
 
     try {
       const [shardKeys, docs] = await Promise.all(promises);
+      this.applyDocumentsExpansion(docs);
 
       Object.assign(stateChanges, {
         status: this.isInitialQuery(query)
@@ -2477,6 +2565,34 @@ export function parseInsertDocument(
   text: string
 ): HadronDocument {
   return toInsertHadronDocument(parseInsertDocumentText(view, text));
+}
+
+/**
+ * Parse the Update Document editor text, which is shown as EJSON but may be
+ * edited in shell syntax (unquoted keys, single quotes, `ObjectId(...)`).
+ * EJSON is tried first because shell syntax would read EJSON type wrappers
+ * like `{ "$oid": ... }` as plain sub-documents. Shell syntax is only a
+ * fallback for text that isn't JSON at all: for valid JSON, the EJSON error
+ * (e.g. an out-of-range `$numberLong`) is the real problem and is rethrown.
+ */
+export function parseUpdateDocumentText(text: string): HadronDocument {
+  try {
+    return HadronDocument.FromEJSON(text);
+  } catch (ejsonError) {
+    if (isJSONSyntax(text)) {
+      throw ejsonError;
+    }
+    return new HadronDocument(assertPlainDocument(parseShellBSON(text)));
+  }
+}
+
+function isJSONSyntax(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

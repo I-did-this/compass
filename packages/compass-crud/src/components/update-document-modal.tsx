@@ -25,8 +25,9 @@ import type { Action, EditorRef } from '@mongodb-js/compass-editor';
 
 import { useAutocompleteFields } from '@mongodb-js/compass-field-store';
 import type { CrudActions } from '../stores/crud-store';
-import UpdateDocumentFind from './update-document-find';
-import type { UpdateDocumentFindRef } from './update-document-find';
+import { parseUpdateDocumentText } from '../stores/crud-store';
+import DocumentFind from './document-find';
+import type { DocumentFindRef } from './document-find';
 
 type EditMode = 'JSON' | 'Tree';
 
@@ -237,7 +238,7 @@ const UpdateDocumentModal: React.FunctionComponent<
 }) => {
   const darkMode = useDarkMode();
   const editorRef = useRef<EditorRef>(null);
-  const findRef = useRef<UpdateDocumentFindRef>(null);
+  const findRef = useRef<DocumentFindRef>(null);
   const editorId = useId();
 
   const [mode, setMode] = useState<EditMode>('JSON');
@@ -319,7 +320,7 @@ const UpdateDocumentModal: React.FunctionComponent<
 
   // Auto-focus the Find input when the user opens it in small mode so they
   // can start typing immediately. Must be in an effect — focus() inside the
-  // setState callback would run before React mounts UpdateDocumentFind and
+  // setState callback would run before React mounts DocumentFind and
   // populates findRef.
   React.useEffect(() => {
     if (isSmallFindOpen) {
@@ -334,7 +335,7 @@ const UpdateDocumentModal: React.FunctionComponent<
 
   const onChangeJson = useCallback((value: string) => {
     try {
-      HadronDocument.FromEJSON(value);
+      parseUpdateDocumentText(value);
       setValidationError(null);
     } catch (error) {
       setValidationError(error as Error);
@@ -354,7 +355,7 @@ const UpdateDocumentModal: React.FunctionComponent<
         // it is valid. If it cannot be parsed, preserve the current state
         // (stay in JSON, surface the error) rather than losing edits.
         try {
-          const parsed = HadronDocument.FromEJSON(jsonText || '');
+          const parsed = parseUpdateDocumentText(jsonText || '');
           parsed.preserveTypes(doc);
           doc.apply(parsed);
           setValidationError(null);
@@ -378,7 +379,7 @@ const UpdateDocumentModal: React.FunctionComponent<
       return;
     }
     try {
-      const newDoc = HadronDocument.FromEJSON(jsonText || '');
+      const newDoc = parseUpdateDocumentText(jsonText || '');
       // Preserve the original document's type information so field types are
       // not unintentionally changed by round-tripping through text.
       newDoc.preserveTypes(doc);
@@ -517,10 +518,10 @@ const UpdateDocumentModal: React.FunctionComponent<
 
                 <div className={findGroupStyles}>
                   {mode === 'JSON' && (isFullScreen || isSmallFindOpen) && (
-                    <UpdateDocumentFind
+                    <DocumentFind
                       key={`find-${renderKey}`}
                       ref={findRef}
-                      editorRef={editorRef}
+                      searchTargetRef={editorRef}
                     />
                   )}
                 </div>

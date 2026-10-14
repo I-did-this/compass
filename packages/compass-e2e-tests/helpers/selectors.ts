@@ -590,8 +590,6 @@ export const CollectionHeader = '[data-testid="collection-header"]';
 // Documents tab
 export const DocumentListActionBarMessage =
   '[data-testid="crud-document-count-display"]';
-export const ExportCollectionMenuButton =
-  '[data-testid="crud-export-collection-show-actions"]';
 export const ExportCollectionQueryOption =
   '[data-testid="crud-export-collection-export-query-action"]';
 export const ExportCollectionFullCollectionOption =
@@ -601,8 +599,10 @@ export const DocumentListFetching =
 export const DocumentListFetchingStopButton =
   '[data-testid="documents-content"] [data-testid="fetching-documents"] button';
 export const DocumentListError = '[data-testid="document-list-error-summary"]';
-export const AddDataButton = '[data-testid="crud-add-data-show-actions"]';
-export const GenerateMockDataOption = '[data-action="generate-mock-data"]';
+export const AddDataButton =
+  '[data-testid="crud-add-data-insert-document-action"]';
+export const GenerateMockDataOption =
+  '[data-testid="crud-add-data-generate-mock-data-action"]';
 export const MockDataGeneratorModal =
   '[data-testid="generate-mock-data-modal"]';
 export const MockDataGeneratorNext = `${MockDataGeneratorModal} [data-testid="next-step-button"]`;
@@ -652,8 +652,6 @@ export const JSONEditDocumentButton = `${JSONDocumentCard} [data-testid="editor-
 export const JSONOpenUpdateDocumentModalButton = `${JSONDocumentCard} [data-testid="editor-action-Update document"]`;
 export const JSONCopyDocumentButton = `${JSONDocumentCard} [data-testid="editor-action-Copy"]`;
 export const ShowMoreFieldsButton = '[data-testid="show-more-fields-button"]';
-export const BulkActionsButton =
-  '[data-testid="crud-bulk-actions-show-actions"]';
 export const OpenBulkUpdateButton =
   '[data-testid="crud-bulk-actions-bulk-update-action"]';
 export const OpenBulkDeleteButton =
@@ -690,6 +688,12 @@ export const UpdateDocumentModalFoldPlaceholder = `${UpdateDocumentModal} .cm-fo
 export const UpdateDocumentModalEditorContainer =
   '[data-testid="update-document-editor-container"]';
 export const DocumentTableContainer = `.document-table-view-container`;
+export const SearchDocumentButton = '[data-testid="search-document-button"]';
+export const JSONSearchDocumentButton = `${JSONDocumentCard} [data-testid="editor-action-Search in document"]`;
+export const DocumentSearchInput = '[data-testid="document-search-input"]';
+export const DocumentSearchCounter = '[data-testid="document-search-counter"]';
+export const TableViewOpenUpdateDocumentModalButton =
+  '[data-testid="table-view-row-actions-update-modal-action"]';
 
 // Insert Document modal
 

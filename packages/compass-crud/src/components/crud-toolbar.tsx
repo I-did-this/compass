@@ -3,8 +3,6 @@ import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
 
 import {
   Body,
-  Button,
-  DropdownMenuButton,
   Icon,
   IconButton,
   SpinLoader,
@@ -17,17 +15,19 @@ import {
   SignalPopover,
   useContextMenuGroups,
   Tooltip,
-  WorkspaceContainer,
 } from '@mongodb-js/compass-components';
-import type { MenuAction, Signal } from '@mongodb-js/compass-components';
+import type { Signal } from '@mongodb-js/compass-components';
 import { ViewSwitcher } from './view-switcher';
 import { type DocumentView } from '../stores/crud-store';
-import { AddDataMenu } from './add-data-menu';
+import { AddDataActions } from './add-data-actions';
 import { usePreference } from 'compass-preferences-model/provider';
-import { BulkActionsMenu } from './bulk-actions-menu';
+import { BulkActions } from './bulk-actions';
 import { QueryBar } from '@mongodb-js/compass-query-bar';
 import { useConnectionInfoRef } from '@mongodb-js/compass-connections/provider';
-import { DOCUMENT_NARROW_ICON_BREAKPOINT } from '../constants/document-narrow-icon-breakpoint';
+import {
+  ToolbarIconButton,
+  toolbarButtonGroupStyles,
+} from './toolbar-icon-button';
 
 const crudQueryBarStyles = css({
   width: '100%',
@@ -66,21 +66,6 @@ const prevNextStyles = css({
   alignItems: 'center',
 });
 
-const exportCollectionButtonStyles = css({
-  whiteSpace: 'nowrap',
-});
-
-const exportCodeButtonTextStyles = css({
-  [`@container ${WorkspaceContainer.toolbarContainerQueryName} (width < ${DOCUMENT_NARROW_ICON_BREAKPOINT})`]:
-    {
-      display: 'none',
-    },
-});
-
-const outputOptionsButtonStyles = css({
-  whiteSpace: 'nowrap',
-});
-
 const docsPerPageOptionStyles = css({
   width: spacing[1600] + spacing[300],
 });
@@ -95,18 +80,6 @@ const countUnavailableTextStyles = css({
   textDecorationStyle: 'dotted',
   textUnderlineOffset: '3px',
 });
-
-type ExportDataOption = 'export-query' | 'export-full-collection';
-const exportDataActions: MenuAction<ExportDataOption>[] = [
-  { action: 'export-query', label: 'Export query results' },
-  { action: 'export-full-collection', label: 'Export the full collection' },
-];
-
-type ExpandControlsOption = 'expand-all' | 'collapse-all';
-const expandControlsOptions: MenuAction<ExpandControlsOption>[] = [
-  { action: 'expand-all', label: 'Expand all documents' },
-  { action: 'collapse-all', label: 'Collapse all documents' },
-];
 
 const OUTDATED_WARNING = `The content is outdated and no longer in sync
 with the current query. Press "Find" again to see the results for
@@ -151,6 +124,7 @@ export type CrudToolbarProps = {
   onResetClicked: () => void;
   onUpdateButtonClicked: () => void;
   onDeleteButtonClicked: () => void;
+  areAllDocumentsExpanded: boolean;
   onExpandAllClicked: () => void;
   onCollapseAllClicked: () => void;
   openExportFileDialog: (exportFullCollection?: boolean) => void;
@@ -186,6 +160,7 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
   onResetClicked,
   onUpdateButtonClicked,
   onDeleteButtonClicked,
+  areAllDocumentsExpanded,
   onExpandAllClicked,
   onCollapseAllClicked,
   openExportFileDialog,
@@ -211,6 +186,14 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
     track('Query Results Refreshed', {}, connectionInfoRef.current);
     refreshDocuments();
   }, [refreshDocuments, track, connectionInfoRef]);
+
+  const onExportQueryResults = useCallback(() => {
+    openExportFileDialog(false);
+  }, [openExportFileDialog]);
+
+  const onExportFullCollection = useCallback(() => {
+    openExportFileDialog(true);
+  }, [openExportFileDialog]);
 
   const prevButtonDisabled = useMemo(() => page === 0, [page]);
   const nextButtonDisabled = useMemo(
@@ -333,7 +316,7 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
       <div className={crudBarStyles}>
         <div className={toolbarLeftActionStyles}>
           {!readonly && (
-            <AddDataMenu
+            <AddDataActions
               insertDataHandler={insertDataHandler}
               isWritable={isWritable}
               instanceDescription={instanceDescription}
@@ -341,7 +324,7 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
             />
           )}
           {!readonly && (
-            <BulkActionsMenu
+            <BulkActions
               isWritable={isWritable && !shouldDisableBulkOp}
               disabledTooltip={
                 isWritable
@@ -350,35 +333,32 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
               }
               onUpdate={onUpdateButtonClicked}
               onDelete={onDeleteButtonClicked}
-            ></BulkActionsMenu>
-          )}
-          {isImportExportEnabled && (
-            <DropdownMenuButton<ExportDataOption>
-              data-testid="crud-export-collection"
-              actions={exportDataActions}
-              onAction={(action: ExportDataOption) =>
-                openExportFileDialog(action === 'export-full-collection')
-              }
-              buttonText="Export Data"
-              buttonProps={{
-                className: exportCollectionButtonStyles,
-                size: 'xsmall',
-                leftGlyph: <Icon glyph="Export" />,
-              }}
-              narrowBreakpoint={DOCUMENT_NARROW_ICON_BREAKPOINT}
             />
           )}
-          <Button
-            onClick={onOpenExportToLanguage}
-            title="Export query to language"
-            aria-label="Export query to language"
-            data-testid="crud-export-to-language-button"
-            className={exportCollectionButtonStyles}
-            size="xsmall"
-            leftGlyph={<Icon glyph="Code" />}
-          >
-            <span className={exportCodeButtonTextStyles}>Export Code</span>
-          </Button>
+          <div className={toolbarButtonGroupStyles}>
+            {isImportExportEnabled && (
+              <>
+                <ToolbarIconButton
+                  label="Export query results"
+                  glyph="Export"
+                  onClick={onExportQueryResults}
+                  data-testid="crud-export-collection-export-query-action"
+                />
+                <ToolbarIconButton
+                  label="Export the full collection"
+                  glyph="Database"
+                  onClick={onExportFullCollection}
+                  data-testid="crud-export-collection-export-full-collection-action"
+                />
+              </>
+            )}
+            <ToolbarIconButton
+              label="Export query to language"
+              glyph="Code"
+              onClick={onOpenExportToLanguage}
+              data-testid="crud-export-to-language-button"
+            />
+          </div>
           {insights && <SignalPopover signals={insights} />}
         </div>
         <div className={toolbarRightActionStyles}>
@@ -465,22 +445,21 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
             </IconButton>
           </div>
 
-          <DropdownMenuButton<ExpandControlsOption>
-            data-testid="crud-export-collection"
-            actions={expandControlsOptions}
-            onAction={(action: ExpandControlsOption) =>
-              action === 'expand-all'
-                ? onExpandAllClicked()
-                : onCollapseAllClicked()
+          <ToolbarIconButton
+            label={
+              areAllDocumentsExpanded
+                ? 'Collapse all documents'
+                : 'Expand all documents'
             }
-            buttonText=""
-            buttonProps={{
-              className: outputOptionsButtonStyles,
-              size: 'xsmall',
-              title: 'Output Options',
-              ['aria-label']: 'Output Options',
-              disabled: activeDocumentView === 'Table',
-            }}
+            glyph={areAllDocumentsExpanded ? 'CaretDown' : 'CaretRight'}
+            onClick={
+              areAllDocumentsExpanded
+                ? onCollapseAllClicked
+                : onExpandAllClicked
+            }
+            disabled={activeDocumentView === 'Table'}
+            disabledReason="Not available in table view"
+            data-testid="crud-expand-collapse-all-toggle"
           />
 
           <ViewSwitcher

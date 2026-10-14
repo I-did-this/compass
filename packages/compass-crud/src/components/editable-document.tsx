@@ -15,9 +15,29 @@ import {
 import { documentStyles, documentContentStyles } from './readonly-document';
 import { getInsightsForDocument } from '../utils';
 import type { CrudActions } from '../stores/crud-store';
+import DocumentFind from './document-find';
+import type { DocumentFindRef, DocumentSearchTarget } from './document-find';
+import { registerDocumentSearch } from '../utils/document-search-focus';
+import {
+  DomTextSearch,
+  SEARCH_HIGHLIGHT,
+  CURRENT_SEARCH_HIGHLIGHT,
+} from '../utils/dom-text-search';
 
 const documentElementsContainerStyles = css({
   position: 'relative',
+  [`& ::highlight(${SEARCH_HIGHLIGHT})`]: {
+    backgroundColor: palette.yellow.light2,
+    color: palette.black,
+  },
+  [`& ::highlight(${CURRENT_SEARCH_HIGHLIGHT})`]: {
+    backgroundColor: palette.yellow.base,
+    color: palette.black,
+  },
+});
+
+const inlineSearchStyles = css({
+  padding: 0,
 });
 
 // Matches the KeylineCard radius so the sticky header clips flush with the
@@ -141,6 +161,7 @@ type EditableDocumentState = {
   editing: boolean;
   deleting: boolean;
   expanded: boolean;
+  searching: boolean;
 };
 
 /**
@@ -150,12 +171,22 @@ class EditableDocument extends React.Component<
   EditableDocumentProps,
   EditableDocumentState
 > {
+  containerRef = React.createRef<HTMLDivElement>();
+  findRef = React.createRef<DocumentFindRef>();
+  unregisterSearch?: () => void;
+  elementsContainerRef = React.createRef<HTMLDivElement>();
+  domSearch = new DomTextSearch(() => this.elementsContainerRef.current);
+  domSearchRef: React.RefObject<DocumentSearchTarget> = {
+    current: this.domSearch,
+  };
+
   constructor(props: EditableDocumentProps) {
     super(props);
     this.state = {
       editing: props.doc.editing,
       deleting: props.doc.markedForDeletion,
       expanded: props.doc.expanded,
+      searching: false,
     };
   }
 
@@ -164,6 +195,10 @@ class EditableDocument extends React.Component<
    */
   componentDidMount() {
     this.subscribeToDocumentEvents(this.props.doc);
+    this.unregisterSearch = registerDocumentSearch({
+      contains: (node) => this.containerRef.current?.contains(node) ?? false,
+      openSearch: this.handleOpenSearch,
+    });
   }
 
   /**
@@ -191,6 +226,8 @@ class EditableDocument extends React.Component<
    */
   componentWillUnmount() {
     this.unsubscribeFromDocumentEvents(this.props.doc);
+    this.unregisterSearch?.();
+    this.domSearch.clearSearch();
   }
 
   /**
@@ -239,7 +276,7 @@ class EditableDocument extends React.Component<
    * Handle copying JSON to clipboard of the document.
    */
   handleCopy() {
-    this.props.copyToClipboard?.(this.props.doc, 'shell-syntax');
+    void this.props.copyToClipboard?.(this.props.doc, 'shell-syntax');
   }
 
   /**
@@ -294,6 +331,30 @@ class EditableDocument extends React.Component<
       doc.expand();
     }
   }
+
+  // Searching expands the document so that matches inside collapsed
+  // sub-documents and arrays are rendered and can be highlighted.
+  handleOpenSearch = () => {
+    if (this.state.searching) {
+      this.findRef.current?.focus();
+      return;
+    }
+    this.props.doc.expand();
+    this.setState({ searching: true });
+  };
+
+  handleToggleSearch = () => {
+    if (this.state.searching) {
+      this.handleCloseSearch();
+    } else {
+      this.handleOpenSearch();
+    }
+  };
+
+  handleCloseSearch = () => {
+    this.domSearch.clearSearch();
+    this.setState({ searching: false });
+  };
 
   handleExpanded = () => {
     this.setState({ expanded: true });
@@ -367,8 +428,7 @@ class EditableDocument extends React.Component<
   renderActions() {
     if (!this.state.editing && !this.state.deleting) {
       // editable defaults to true for backwards compatibility — explicit false
-      // means the row is rendered only to host the wrench (e.g. projection
-      // active), so inline pencil/clone/trash are suppressed.
+      // means the user can't write, so pencil/clone/trash are suppressed.
       const inlineEditable = this.props.editable !== false;
       // In projection mode the wrench moves onto each field row (rendered by
       // HadronElement via onOpenFieldUpdateModal), so suppress the row-corner
@@ -379,6 +439,19 @@ class EditableDocument extends React.Component<
       return (
         <DocumentList.DocumentActionsGroup
           sticky
+          onSearch={this.handleToggleSearch}
+          toolbarContent={
+            this.state.searching ? (
+              <DocumentFind
+                ref={this.findRef}
+                className={inlineSearchStyles}
+                searchTargetRef={this.domSearchRef}
+                focusOnMount
+                onClose={this.handleCloseSearch}
+                data-testid="document-search"
+              />
+            ) : undefined
+          }
           onEdit={inlineEditable ? this.handleEditDocument : undefined}
           onOpenUpdateModal={
             canOpenUpdateModal
@@ -436,7 +509,11 @@ class EditableDocument extends React.Component<
     // delete); in edit/delete mode it hosts the expand toggle + Cancel/Replace.
     const showEditHeader = this.state.editing || this.state.deleting;
     return (
-      <div className={documentStyles} data-testid="editable-document">
+      <div
+        ref={this.containerRef}
+        className={documentStyles}
+        data-testid="editable-document"
+      >
         {showEditHeader ? (
           <EditDocumentHeader
             doc={this.props.doc}
@@ -445,7 +522,9 @@ class EditableDocument extends React.Component<
             expanded={this.state.expanded}
             onExpandToggle={this.handleExpandAll.bind(this)}
             onUpdate={(force) => {
-              if (force) {
+              // A projected document is partial, so replacing it would drop
+              // the hidden fields; only the edited fields are ever written.
+              if (force && !this.props.hasProjection) {
                 void this.props.replaceDocument?.(this.props.doc);
               } else {
                 void this.props.updateDocument?.(this.props.doc);
@@ -463,6 +542,7 @@ class EditableDocument extends React.Component<
         )}
         <div className={documentContentStyles}>
           <div
+            ref={this.elementsContainerRef}
             className={documentElementsContainerStyles}
             data-testid="editable-document-elements"
           >

@@ -35,7 +35,7 @@ describe('<RowActionsRenderer />', function () {
         />
       );
 
-      expect(screen.getByTitle('Update Document')).to.exist;
+      expect(screen.getByTitle('Edit Document')).to.exist;
       expect(screen.getByTitle('Copy Document')).to.exist;
       expect(screen.getByTitle('Clone Document')).to.exist;
       expect(screen.getByTitle('Delete Document')).to.exist;
@@ -57,10 +57,31 @@ describe('<RowActionsRenderer />', function () {
         />
       );
 
-      expect(screen.getByTitle('Update Document')).to.exist;
+      expect(screen.getByTitle('Edit Document')).to.exist;
       expect(screen.queryByTitle('Copy Document')).to.not.exist;
       expect(screen.queryByTitle('Clone Document')).to.not.exist;
       expect(screen.queryByTitle('Delete Document')).to.not.exist;
+    });
+
+    it('shows the wrench alongside the inline edit button when the modal is available', function () {
+      const rowNode = getNode({ field1: 'value' });
+      const value = rowNode.data.hadronDocument.get('field1');
+
+      render(
+        <RowActionsRenderer
+          value={value}
+          node={rowNode}
+          context={undefined}
+          data={undefined}
+          nested={false}
+          copyToClipboard={sinon.spy()}
+          isEditable
+          canOpenUpdateModal
+        />
+      );
+
+      expect(screen.getByTitle('Edit Document')).to.exist;
+      expect(screen.getByTitle('Update Document')).to.exist;
     });
 
     it('does not render buttons when not editable', function () {
@@ -79,7 +100,7 @@ describe('<RowActionsRenderer />', function () {
         />
       );
 
-      expect(screen.queryByTitle('Update Document')).to.not.exist;
+      expect(screen.queryByTitle('Edit Document')).to.not.exist;
       expect(screen.queryByTitle('Copy Document')).to.not.exist;
       expect(screen.queryByTitle('Clone Document')).to.not.exist;
       expect(screen.queryByTitle('Delete Document')).to.not.exist;
@@ -105,13 +126,40 @@ describe('<RowActionsRenderer />', function () {
         />
       );
 
-      userEvent.click(screen.getByTitle('Update Document'));
+      userEvent.click(screen.getByTitle('Edit Document'));
 
       expect(context.addFooter.callCount).to.equal(1);
       expect(
         context.addFooter.calledWithExactly(rowNode, rowNode.data, 'editing')
       ).to.be.true;
       notCalledExcept(context, ['addFooter']);
+    });
+
+    it('clicking the wrench opens the Update Document modal', function () {
+      const rowNode = getNode({ field1: 'value' });
+      const data = rowNode.data;
+      const value = rowNode.data.hadronDocument.get('field1');
+      const context = getContext([]);
+
+      render(
+        <RowActionsRenderer
+          value={value}
+          node={rowNode}
+          context={context}
+          data={data}
+          nested={false}
+          copyToClipboard={sinon.spy()}
+          isEditable
+          canOpenUpdateModal
+        />
+      );
+
+      userEvent.click(screen.getByTitle('Update Document'));
+
+      expect(context.handleOpenUpdateModal).to.have.been.calledOnceWithExactly(
+        data
+      );
+      notCalledExcept(context, ['handleOpenUpdateModal']);
     });
 
     it('clicking clone button calls context.handleClone', function () {
@@ -184,7 +232,7 @@ describe('<RowActionsRenderer />', function () {
         />
       );
 
-      userEvent.click(screen.getByTitle('Update Document'));
+      userEvent.click(screen.getByTitle('Edit Document'));
 
       expect(context.addFooter.callCount).to.equal(1);
       expect(

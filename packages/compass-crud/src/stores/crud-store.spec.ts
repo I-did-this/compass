@@ -328,6 +328,7 @@ describe('store', function () {
         collection: 'test',
         count: null,
         docs: [],
+        allDocumentsExpanded: false,
         docsPerPage: 25,
         end: 0,
         error: null,
@@ -412,28 +413,64 @@ describe('store', function () {
       }
     });
 
-    it('copies the document to the clipboard in ejson format', function () {
+    it('copies the document to the clipboard in ejson format', async function () {
       expect(mockCopyToClipboard.called).to.equal(false);
 
       const doc = { _id: 'testing', name: 'heart 5' };
       const hadronDoc = new HadronDocument(doc);
 
-      store.copyToClipboard(hadronDoc, 'ejson');
+      await store.copyToClipboard(hadronDoc, 'ejson');
       expect(mockCopyToClipboard).to.have.been.calledOnceWithExactly(
         '{\n  "_id": "testing",\n  "name": "heart 5"\n}'
       );
     });
 
-    it('copies the document to the clipboard in shell syntax', function () {
+    it('copies the document to the clipboard in shell syntax', async function () {
       expect(mockCopyToClipboard.called).to.equal(false);
 
       const doc = { _id: 'testing', count: 2 };
       const hadronDoc = new HadronDocument(doc);
 
-      store.copyToClipboard(hadronDoc, 'shell-syntax');
+      await store.copyToClipboard(hadronDoc, 'shell-syntax');
       expect(mockCopyToClipboard).to.have.been.calledOnceWithExactly(
         "{\n  _id: 'testing',\n  count: NumberInt('2')\n}"
       );
+    });
+
+    context('when a projection is applied', function () {
+      beforeEach(function () {
+        mockQueryBar.getLastAppliedQuery.returns({ project: { name: 1 } });
+      });
+
+      afterEach(function () {
+        return dataService.deleteMany('compass-crud.test', {});
+      });
+
+      it('copies the full document rather than the projected fields', async function () {
+        await dataService.insertOne('compass-crud.test', {
+          _id: 'projected-copy',
+          name: 'visible',
+          secret: 'hidden',
+        });
+
+        await store.copyToClipboard(
+          new HadronDocument({ _id: 'projected-copy', name: 'visible' }),
+          'ejson'
+        );
+
+        expect(mockCopyToClipboard).to.have.been.calledOnceWithExactly(
+          '{\n  "_id": "projected-copy",\n  "name": "visible",\n  "secret": "hidden"\n}'
+        );
+      });
+
+      it('does not copy a partial document when the full one cannot be loaded', async function () {
+        await store.copyToClipboard(
+          new HadronDocument({ _id: 'not-in-collection', name: 'visible' }),
+          'ejson'
+        );
+
+        expect(mockCopyToClipboard).to.not.have.been.called;
+      });
     });
   });
 
@@ -1650,6 +1687,46 @@ describe('store', function () {
       });
     });
 
+    context('when cloning with a projection applied', function () {
+      beforeEach(function () {
+        mockQueryBar.getLastAppliedQuery.returns({ project: { name: 1 } });
+      });
+
+      afterEach(function () {
+        return dataService.deleteMany('compass-crud.test', {});
+      });
+
+      it('clones the full document rather than the projected fields', async function () {
+        await dataService.insertOne('compass-crud.test', {
+          _id: 'projected-clone',
+          name: 'visible',
+          secret: 'hidden',
+        });
+
+        await store.openInsertDocumentDialog(
+          { _id: 'projected-clone', name: 'visible' },
+          true
+        );
+
+        expect(store.state.insert.isOpen).to.equal(true);
+        expect(
+          Array.from(
+            store.state.insert.doc?.elements ?? [],
+            (element) => element.key
+          )
+        ).to.deep.equal(['name', 'secret']);
+      });
+
+      it('does not open the dialog when the full document cannot be loaded', async function () {
+        await store.openInsertDocumentDialog(
+          { _id: 'not-in-collection', name: 'visible' },
+          true
+        );
+
+        expect(store.state.insert.isOpen).to.equal(false);
+      });
+    });
+
     context('when clone is false', function () {
       it('does not remove _id from the document', async function () {
         const listener = waitForState(store, (state) => {
@@ -1959,6 +2036,27 @@ describe('store', function () {
           await listener;
         });
 
+        it('keeps documents expanded after "Expand all documents"', async function () {
+          await store.refreshDocuments();
+          store.expandAllDocuments();
+          expect(store.state.docs?.every((doc) => doc.expanded)).to.equal(true);
+
+          await store.refreshDocuments();
+
+          expect(store.state.docs).to.have.length(2);
+          expect(store.state.docs?.every((doc) => doc.expanded)).to.equal(true);
+        });
+
+        it('loads documents collapsed after "Collapse all documents"', async function () {
+          await store.refreshDocuments();
+          store.expandAllDocuments();
+          store.collapseAllDocuments();
+
+          await store.refreshDocuments();
+
+          expect(store.state.docs?.some((doc) => doc.expanded)).to.equal(false);
+        });
+
         it('uses the sort order from preferences', async function () {
           await preferences.savePreferences({
             defaultSortOrder: '{ _id: -1 }',
@@ -2034,6 +2132,52 @@ describe('store', function () {
           await staleRefresh;
           expect(store.state.updateDocumentModal.isOpen).to.equal(true);
           expect(store.state.updateDocumentModal.doc).to.not.equal(null);
+        });
+
+        context('after saving from the Update Document modal', function () {
+          let doc: HadronDocument;
+
+          beforeEach(async function () {
+            const initialLoad = waitForState(
+              store,
+              (state: CrudStore['state']) => {
+                expect(state.docs).to.have.length(2);
+              }
+            );
+            void store.refreshDocuments();
+            await initialLoad;
+            [doc] = store.state.docs ?? [];
+          });
+
+          it('reloads the documents in table view so the grid redraws', async function () {
+            store.setState({ view: 'Table' });
+            await store.openUpdateDocumentModal(doc);
+            const refresh = sinon.spy(store, 'refreshDocuments');
+
+            doc.onUpdateSuccess(doc.generateObject());
+
+            expect(refresh).to.have.been.calledOnce;
+          });
+
+          it('does not reload in list view, where the row updates in place', async function () {
+            await store.openUpdateDocumentModal(doc);
+            const refresh = sinon.spy(store, 'refreshDocuments');
+
+            doc.onUpdateSuccess(doc.generateObject());
+
+            expect(refresh).to.not.have.been.called;
+          });
+
+          it('does not reload after the modal was cancelled', async function () {
+            store.setState({ view: 'Table' });
+            await store.openUpdateDocumentModal(doc);
+            store.closeUpdateDocumentModal();
+            const refresh = sinon.spy(store, 'refreshDocuments');
+
+            doc.onUpdateSuccess(doc.generateObject());
+
+            expect(refresh).to.not.have.been.called;
+          });
         });
       });
 

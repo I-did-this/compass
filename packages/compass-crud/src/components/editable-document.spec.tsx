@@ -1,5 +1,10 @@
 import React from 'react';
-import { render, screen, userEvent } from '@mongodb-js/testing-library-compass';
+import {
+  render,
+  screen,
+  userEvent,
+  waitFor,
+} from '@mongodb-js/testing-library-compass';
 import HadronDocument from 'hadron-document';
 import { expect } from 'chai';
 import sinon from 'sinon';
@@ -36,6 +41,67 @@ describe('<EditableDocument />', function () {
     it('renders an editable element for each document element', function () {
       const components = screen.getAllByTestId('hadron-document-element');
       expect(components).to.have.lengthOf(3);
+    });
+  });
+
+  describe('search in document', function () {
+    beforeEach(function () {
+      render(
+        <EditableDocument
+          doc={
+            new HadronDocument({
+              email: 'nehal@callhippo.com',
+              profile: { firstName: 'NEHAL' },
+            })
+          }
+          removeDocument={sinon.spy()}
+          replaceDocument={sinon.spy()}
+          updateDocument={sinon.spy()}
+          copyToClipboard={sinon.spy()}
+          openInsertDocumentDialog={sinon.spy()}
+        />
+      );
+    });
+
+    it('opens a search bar that counts matches, including nested fields', async function () {
+      userEvent.click(screen.getByTestId('search-document-button'), undefined, {
+        skipPointerEventsCheck: true,
+      });
+
+      const input = await screen.findByTestId('document-search-input');
+      userEvent.type(input, 'nehal');
+
+      expect(screen.getByTestId('document-search-counter')).to.have.text(
+        '1 of 2'
+      );
+      userEvent.click(screen.getByTestId('document-search-next'));
+      expect(screen.getByTestId('document-search-counter')).to.have.text(
+        '2 of 2'
+      );
+    });
+
+    it('opens and focuses the search on Ctrl/Cmd+F after clicking in the document', async function () {
+      userEvent.click(screen.getByTestId('editable-document-elements'));
+
+      const findEvent = new Event('compass:find', { cancelable: true });
+      window.dispatchEvent(findEvent);
+
+      expect(findEvent.defaultPrevented).to.equal(true);
+      const input = await screen.findByTestId('document-search-input');
+      await waitFor(() => {
+        expect(document.activeElement).to.equal(input);
+      });
+    });
+
+    it('closes the search bar on Escape', async function () {
+      userEvent.click(screen.getByTestId('search-document-button'), undefined, {
+        skipPointerEventsCheck: true,
+      });
+
+      const input = await screen.findByTestId('document-search-input');
+      userEvent.type(input, 'nehal{escape}');
+
+      expect(screen.queryByTestId('document-search')).to.not.exist;
     });
   });
 

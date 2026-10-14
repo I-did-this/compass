@@ -109,7 +109,6 @@ describe('Collection mock data generator (with mocked backend)', function () {
   });
 
   async function openGeneratorModal() {
-    await browser.clickVisible(Selectors.AddDataButton);
     await browser.$(Selectors.GenerateMockDataOption).waitForClickable();
     await browser.$(Selectors.GenerateMockDataOption).moveTo();
     await browser.clickVisible(Selectors.GenerateMockDataOption);

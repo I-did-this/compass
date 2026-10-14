@@ -19,6 +19,7 @@ export type FullWidthCellRendererProps = Pick<
   replaceDocument: CrudActions['replaceDocument'];
   removeDocument: CrudActions['removeDocument'];
   updateDocument: CrudActions['updateDocument'];
+  hasProjection?: boolean;
   darkMode?: boolean;
 };
 
@@ -138,7 +139,9 @@ class FullWidthCellRenderer extends React.Component<
           deleting={this.state.mode === 'deleting'}
           onUpdate={(force) => {
             this.props.api.stopEditing();
-            if (force) {
+            // A projected document is partial, so replacing it would drop
+            // the hidden fields; only the edited fields are ever written.
+            if (force && !this.props.hasProjection) {
               void this.props.replaceDocument(this.doc);
             } else {
               void this.props.updateDocument(this.doc);

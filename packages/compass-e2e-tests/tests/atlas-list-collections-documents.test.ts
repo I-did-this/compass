@@ -105,7 +105,6 @@ describe('Atlas: Database with large number of collections', function () {
     const uniqueValue = `test_${Date.now()}`;
 
     // Open the insert document modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.InsertDocumentOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.InsertDocumentOption);

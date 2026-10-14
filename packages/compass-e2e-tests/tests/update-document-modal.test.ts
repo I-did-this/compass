@@ -328,4 +328,131 @@ describe('Update Document modal', function () {
       .$(Selectors.UpdateDocumentModal)
       .waitForDisplayed({ reverse: true });
   });
+
+  it('saves a document edited in shell syntax (no quotes)', async function () {
+    await openEditModalFor(browser, '{ i: 13 }');
+    await browser.$(Selectors.UpdateDocumentModalJSONEditor).waitForDisplayed();
+
+    const json = await readModalJson(browser);
+    const id = (JSON.parse(json) as { _id: { $oid: string } })._id.$oid;
+    await browser.setCodemirrorEditorValue(
+      Selectors.UpdateDocumentModalJSONEditor,
+      `{ _id: ObjectId('${id}'), i: 13, j: 1313, note: 'shell' }`
+    );
+
+    await browser.clickVisible(Selectors.UpdateDocumentModalUpdateButton);
+    await browser
+      .$(Selectors.UpdateDocumentModal)
+      .waitForDisplayed({ reverse: true });
+
+    await browser.runFindOperation('Documents', '{ i: 13 }');
+    await browser.clickVisible(Selectors.SelectJSONView);
+    await browser.$(Selectors.DocumentJSONEntry).waitForDisplayed();
+    await browser.waitUntil(async () => {
+      const text = await browser.getCodemirrorEditorText(
+        Selectors.DocumentJSONEntry
+      );
+      return /"j":\s*1313/.test(text) && /"note":\s*"shell"/.test(text);
+    });
+  });
+
+  it('opens from the table view and redraws the row after saving', async function () {
+    await browser.runFindOperation('Documents', '{ i: 14 }');
+    await browser.clickVisible(Selectors.SelectTableView);
+    const row = browser.$('.ag-grid-scrolling-container .ag-row-first');
+    await row.waitForDisplayed();
+
+    await browser.waitUntil(async () => {
+      await row.moveTo();
+      const wrench = browser.$(
+        Selectors.TableViewOpenUpdateDocumentModalButton
+      );
+      if (!(await wrench.isDisplayed())) {
+        return false;
+      }
+      await wrench.click();
+      return true;
+    });
+    await browser.$(Selectors.UpdateDocumentModal).waitForDisplayed();
+
+    const json = await readModalJson(browser);
+    await browser.setCodemirrorEditorValue(
+      Selectors.UpdateDocumentModalJSONEditor,
+      JSON.stringify({ ...JSON.parse(json), j: 1414 })
+    );
+    await browser.clickVisible(Selectors.UpdateDocumentModalUpdateButton);
+    await browser
+      .$(Selectors.UpdateDocumentModal)
+      .waitForDisplayed({ reverse: true });
+
+    await browser.waitUntil(async () => {
+      const cell = browser.$(
+        '.ag-grid-scrolling-container .ag-row-first [col-id="j"]'
+      );
+      return (await cell.getText()) === '1414';
+    });
+  });
+
+  it('searches inside a single document in list and JSON views', async function () {
+    await browser.runFindOperation('Documents', '{ i: 15 }');
+    await browser.$(Selectors.DocumentListEntry).waitForDisplayed();
+
+    await browser.waitUntil(async () => {
+      await browser.hover(Selectors.DocumentListEntry);
+      return browser.$(Selectors.SearchDocumentButton).isDisplayed();
+    });
+    await browser.clickVisible(Selectors.SearchDocumentButton);
+    await browser.setValueVisible(Selectors.DocumentSearchInput, 'j');
+    await browser.waitUntil(async () => {
+      return /^1 of \d+$/.test(
+        await browser.$(Selectors.DocumentSearchCounter).getText()
+      );
+    });
+
+    await browser.clickVisible(Selectors.SelectJSONView);
+    await browser.$(Selectors.JSONDocumentCard).waitForDisplayed();
+    await browser.hover(Selectors.JSONDocumentCard);
+    await browser.clickVisible(Selectors.JSONSearchDocumentButton);
+    await browser.setValueVisible(Selectors.DocumentSearchInput, '15');
+    await browser.waitUntil(async () => {
+      return /^1 of \d+$/.test(
+        await browser.$(Selectors.DocumentSearchCounter).getText()
+      );
+    });
+  });
+
+  it('keeps add data and document actions available with a projection', async function () {
+    await browser.runFindOperation('Documents', '{ i: 7 }', {
+      project: '{ i: 1 }',
+    });
+    const docEntry = browser.$(Selectors.DocumentListEntry);
+    await docEntry.waitForDisplayed();
+
+    await browser.$(Selectors.AddDataButton).waitForDisplayed();
+
+    // Clone/delete act on the full document, so they stay; the pencil
+    // (inline editing of the partial document) is the only action removed.
+    await browser.waitUntil(async () => {
+      await browser.hover(Selectors.DocumentListEntry);
+      return browser.$(Selectors.CloneDocumentButton).isDisplayed();
+    });
+    await browser.$(Selectors.DeleteDocumentButton).waitForDisplayed();
+    expect(await browser.$(Selectors.EditDocumentButton).isExisting()).to.equal(
+      false
+    );
+
+    // Cloning refetches the full document, so the projected-out field is
+    // included in the insert dialog.
+    await browser.clickVisible(Selectors.CloneDocumentButton);
+    await browser.$(Selectors.InsertDialog).waitForDisplayed();
+    await browser.waitUntil(async () => {
+      const text = await browser.getCodemirrorEditorText(
+        Selectors.InsertDocumentEditor
+      );
+      return /\bi\b/.test(text) && /\bj\b/.test(text);
+    });
+
+    await browser.clickVisible(Selectors.InsertCancel);
+    await browser.$(Selectors.InsertDialog).waitForDisplayed({ reverse: true });
+  });
 });

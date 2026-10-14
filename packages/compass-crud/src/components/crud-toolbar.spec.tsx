@@ -20,8 +20,9 @@ const testOutdatedMessageId = 'crud-outdated-message-id';
 const testErrorMessageId = 'document-list-error-summary';
 const testDocumentsPerPageId = 'crud-document-per-page-selector';
 
-const addDataText = 'Add Data';
-const bulkActionsText = 'Bulk';
+const insertDocumentLabel = 'Insert document';
+const bulkUpdateLabel = 'Bulk update documents';
+const bulkDeleteLabel = 'Bulk delete documents';
 
 describe('CrudToolbar Component', function () {
   let preferences: PreferencesAccess;
@@ -46,6 +47,7 @@ describe('CrudToolbar Component', function () {
         onResetClicked={noop}
         onUpdateButtonClicked={noop}
         onDeleteButtonClicked={noop}
+        areAllDocumentsExpanded={false}
         onExpandAllClicked={noop}
         onCollapseAllClicked={noop}
         openExportFileDialog={noop}
@@ -230,11 +232,45 @@ describe('CrudToolbar Component', function () {
       readonly: false,
     });
 
-    expect(
-      screen.getByRole('button', {
-        name: new RegExp(addDataText, 'i'),
-      })
-    ).to.be.visible;
+    expect(screen.getByRole('button', { name: insertDocumentLabel })).to.be
+      .visible;
+  });
+
+  it('renders the toolbar action buttons as icons and names them in a tooltip on hover', async function () {
+    renderCrudToolbar();
+
+    for (const name of [
+      insertDocumentLabel,
+      'Import JSON or CSV file',
+      bulkUpdateLabel,
+      bulkDeleteLabel,
+      'Export query results',
+      'Export the full collection',
+      'Export query to language',
+    ]) {
+      const button = screen.getByRole('button', { name });
+      expect(button).to.have.text('');
+
+      userEvent.hover(button);
+      await waitFor(() => {
+        expect(screen.getByRole('tooltip')).to.have.text(name);
+      });
+      userEvent.unhover(button);
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip')).to.not.exist;
+      });
+    }
+  });
+
+  it('explains why bulk actions are disabled in the tooltip', async function () {
+    renderCrudToolbar({ querySkip: 10 });
+
+    userEvent.hover(screen.getByRole('button', { name: bulkUpdateLabel }));
+    await waitFor(() => {
+      expect(screen.getByRole('tooltip')).to.have.text(
+        'Remove limit and skip in your query to perform a bulk operation'
+      );
+    });
   });
 
   it('should render the start and end count', function () {
@@ -254,8 +290,12 @@ describe('CrudToolbar Component', function () {
       readonly: true,
     });
 
-    expect(screen.queryByText(addDataText)).to.not.exist;
-    expect(screen.queryByText(bulkActionsText)).to.not.exist;
+    expect(screen.queryByRole('button', { name: insertDocumentLabel })).to.not
+      .exist;
+    expect(screen.queryByRole('button', { name: bulkUpdateLabel })).to.not
+      .exist;
+    expect(screen.queryByRole('button', { name: bulkDeleteLabel })).to.not
+      .exist;
   });
 
   it('should call to open the export dialog when export is clicked', function () {
@@ -265,14 +305,15 @@ describe('CrudToolbar Component', function () {
     });
 
     expect(exportSpy.called).to.be.false;
-    userEvent.click(screen.getByText('Export Data'));
-    userEvent.click(screen.getByText('Export the full collection'));
+    userEvent.click(
+      screen.getByRole('button', { name: 'Export the full collection' })
+    );
 
     expect(exportSpy.calledOnce).to.be.true;
     expect(exportSpy.firstCall.args[0]).to.be.true;
   });
 
-  describe('bulk actions menu', function () {
+  describe('bulk actions', function () {
     it('should render disabled when the query has a skip', function () {
       renderCrudToolbar({
         querySkip: 10,
@@ -280,7 +321,7 @@ describe('CrudToolbar Component', function () {
 
       expect(
         screen
-          .getByTestId('crud-bulk-actions-show-actions')
+          .getByTestId('crud-bulk-actions-bulk-update-action')
           .getAttribute('aria-disabled')
       ).to.equal('true');
     });
@@ -292,7 +333,7 @@ describe('CrudToolbar Component', function () {
 
       expect(
         screen
-          .getByTestId('crud-bulk-actions-show-actions')
+          .getByTestId('crud-bulk-actions-bulk-update-action')
           .getAttribute('aria-disabled')
       ).to.equal('true');
     });
@@ -302,8 +343,7 @@ describe('CrudToolbar Component', function () {
 
       renderCrudToolbar({ onUpdateButtonClicked: onUpdateButtonClickedSpy });
 
-      userEvent.click(screen.getByTestId('crud-bulk-actions-show-actions'));
-      userEvent.click(screen.getByText('Bulk update documents'));
+      userEvent.click(screen.getByRole('button', { name: bulkUpdateLabel }));
       expect(onUpdateButtonClickedSpy).to.have.been.called;
     });
 
@@ -312,54 +352,62 @@ describe('CrudToolbar Component', function () {
 
       renderCrudToolbar({ onDeleteButtonClicked: onDeleteButtonClickedSpy });
 
-      userEvent.click(screen.getByTestId('crud-bulk-actions-show-actions'));
-      userEvent.click(screen.getByText('Bulk delete documents'));
+      userEvent.click(screen.getByRole('button', { name: bulkDeleteLabel }));
       expect(onDeleteButtonClickedSpy).to.have.been.called;
     });
   });
 
-  describe('Output Options', function () {
-    describe('table view', function () {
-      it('should be disabled', function () {
-        renderCrudToolbar({
-          activeDocumentView: 'Table',
-        });
+  describe('expand/collapse all documents toggle', function () {
+    it('should be disabled in table view', function () {
+      renderCrudToolbar({
+        activeDocumentView: 'Table',
+      });
 
-        expect(screen.getByTitle('Output Options')).to.have.attribute(
-          'aria-disabled',
-          'true'
+      expect(
+        screen.getByRole('button', { name: 'Expand all documents' })
+      ).to.have.attribute('aria-disabled', 'true');
+    });
+
+    it('should show its action in a tooltip on hover', async function () {
+      renderCrudToolbar({ activeDocumentView: 'JSON' });
+
+      userEvent.hover(
+        screen.getByRole('button', { name: 'Expand all documents' })
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('tooltip')).to.have.text(
+          'Expand all documents'
         );
       });
     });
 
-    describe('other views', function () {
-      it('should provide "Expand all documents"', function () {
-        const onExpandAllClicked = sinon.spy();
-        renderCrudToolbar({
-          activeDocumentView: 'JSON',
-          onExpandAllClicked,
-        });
-
-        userEvent.click(screen.getByTitle('Output Options'));
-        const expandAllBtn = screen.getByText('Expand all documents');
-        expect(expandAllBtn).to.be.visible;
-        userEvent.click(expandAllBtn);
-        expect(onExpandAllClicked).to.have.been.called;
+    it('should expand all documents when they are collapsed', function () {
+      const onExpandAllClicked = sinon.spy();
+      renderCrudToolbar({
+        activeDocumentView: 'JSON',
+        areAllDocumentsExpanded: false,
+        onExpandAllClicked,
       });
 
-      it('should provide "Collapse all documents"', function () {
-        const onCollapseAllClicked = sinon.spy();
-        renderCrudToolbar({
-          activeDocumentView: 'JSON',
-          onCollapseAllClicked,
-        });
+      userEvent.click(
+        screen.getByRole('button', { name: 'Expand all documents' })
+      );
+      expect(onExpandAllClicked).to.have.been.calledOnce;
+    });
 
-        userEvent.click(screen.getByTitle('Output Options'));
-        const collapseAllBtn = screen.getByText('Collapse all documents');
-        expect(collapseAllBtn).to.be.visible;
-        userEvent.click(collapseAllBtn);
-        expect(onCollapseAllClicked).to.have.been.called;
+    it('should collapse all documents when they are expanded', function () {
+      const onCollapseAllClicked = sinon.spy();
+      renderCrudToolbar({
+        activeDocumentView: 'JSON',
+        areAllDocumentsExpanded: true,
+        onCollapseAllClicked,
       });
+
+      userEvent.click(
+        screen.getByRole('button', { name: 'Collapse all documents' })
+      );
+      expect(onCollapseAllClicked).to.have.been.calledOnce;
     });
   });
 
@@ -379,7 +427,7 @@ describe('CrudToolbar Component', function () {
     it('has the add data button enabled', function () {
       expect(
         screen
-          .getByTestId('crud-add-data-show-actions')
+          .getByTestId('crud-add-data-insert-document-action')
           .getAttribute('disabled')
       ).to.equal(null);
     });
@@ -395,7 +443,7 @@ describe('CrudToolbar Component', function () {
     it('has the add data button disabled', function () {
       expect(
         screen
-          .getByTestId('crud-add-data-show-actions')
+          .getByTestId('crud-add-data-insert-document-action')
           .getAttribute('aria-disabled')
       ).to.equal('true');
     });
@@ -835,17 +883,15 @@ describe('CrudToolbar Component', function () {
     });
   });
 
-  describe('Mock Data Generator menu item', function () {
+  describe('Mock Data Generator action', function () {
     it('shows the action for an eligible collection when the feature flag is on', async function () {
       await preferences.savePreferences({ enableMockDataGenerator: true });
       renderCrudToolbar({
         isMockDataGeneratorEligible: true,
       });
 
-      // Open the Add Data dropdown menu
-      userEvent.click(screen.getByTestId('crud-add-data-show-actions'));
-
-      expect(screen.getByText('Generate mock data script')).to.be.visible;
+      expect(screen.getByRole('button', { name: 'Generate mock data script' }))
+        .to.be.visible;
     });
 
     it('should not show "Generate mock data script" menu item when not enabled', function () {
@@ -853,9 +899,9 @@ describe('CrudToolbar Component', function () {
         isMockDataGeneratorEligible: false,
       });
 
-      userEvent.click(screen.getByTestId('crud-add-data-show-actions'));
-
-      expect(screen.queryByText('Generate mock data script')).to.not.exist;
+      expect(
+        screen.queryByRole('button', { name: 'Generate mock data script' })
+      ).to.not.exist;
     });
 
     it('should emit "open-mock-data-generator-modal" event when "Generate mock data script" is clicked', async function () {
@@ -865,8 +911,9 @@ describe('CrudToolbar Component', function () {
       });
       const emitSpy = sinon.spy(localAppRegistry, 'emit');
 
-      userEvent.click(screen.getByTestId('crud-add-data-show-actions'));
-      userEvent.click(screen.getByText('Generate mock data script'));
+      userEvent.click(
+        screen.getByRole('button', { name: 'Generate mock data script' })
+      );
 
       expect(emitSpy).to.have.been.calledOnceWith(
         'open-mock-data-generator-modal'
@@ -879,7 +926,7 @@ describe('CrudToolbar Component', function () {
         isWritable: false,
       });
       expect(
-        screen.getByTestId('crud-add-data-show-actions')
+        screen.getByRole('button', { name: 'Generate mock data script' })
       ).to.have.attribute('aria-disabled', 'true');
     });
   });

@@ -25,7 +25,7 @@ function clickMode(mode: 'json' | 'tree') {
   const button: Element =
     option.tagName === 'BUTTON'
       ? option
-      : option.querySelector('button') ?? option;
+      : (option.querySelector('button') ?? option);
   userEvent.click(button);
 }
 
@@ -159,6 +159,42 @@ describe('UpdateDocumentModal', function () {
     const savedObject = savedDoc.generateObject();
     expect(savedObject._id).to.be.instanceOf(ObjectId);
     expect(savedObject.name).to.equal('changed');
+  });
+
+  it('accepts shell syntax (unquoted keys, single quotes, ObjectId) on JSON save', async function () {
+    const { doc, replaceDocument } = renderModal();
+    const originalId = String(doc.generateObject()._id);
+    const editor = await screen.findByTestId('update-document-json-editor');
+
+    await setCodemirrorEditorValue(
+      editor,
+      `{ _id: ObjectId('${originalId}'), name: 'changed', count: 1, extra: true }`
+    );
+
+    await waitFor(() => {
+      expect(isDisabled(screen.getByTestId('update-button'))).to.be.false;
+    });
+    userEvent.click(screen.getByTestId('update-button'));
+
+    await waitFor(() => {
+      expect(replaceDocument).to.have.been.calledOnce;
+    });
+    const savedObject = replaceDocument.firstCall.args[0].generateObject();
+    expect(savedObject._id).to.be.instanceOf(ObjectId);
+    expect(String(savedObject._id)).to.equal(originalId);
+    expect(savedObject.name).to.equal('changed');
+    expect(savedObject.extra).to.equal(true);
+  });
+
+  it('rejects text that is neither valid JSON nor shell syntax', async function () {
+    renderModal();
+    const editor = await screen.findByTestId('update-document-json-editor');
+
+    await setCodemirrorEditorValue(editor, '{ name: }');
+
+    await waitFor(() => {
+      expect(isDisabled(screen.getByTestId('update-button'))).to.be.true;
+    });
   });
 
   it('ends the editing session when cancelled', async function () {

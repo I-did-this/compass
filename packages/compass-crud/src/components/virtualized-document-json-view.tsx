@@ -49,6 +49,7 @@ export type VirtualizedDocumentJsonViewProps = {
   | 'updateDocument'
   | 'openInsertDocumentDialog'
   | 'openUpdateDocumentModal'
+  | 'hasProjection'
 >;
 
 const VirtualizedDocumentJsonView: React.FC<
@@ -67,6 +68,7 @@ const VirtualizedDocumentJsonView: React.FC<
   updateDocument,
   openInsertDocumentDialog,
   openUpdateDocumentModal,
+  hasProjection,
   __TEST_OVERSCAN_COUNT,
   __TEST_LIST_HEIGHT,
   listRef,
@@ -92,6 +94,7 @@ const VirtualizedDocumentJsonView: React.FC<
           updateDocument={updateDocument}
           openInsertDocumentDialog={openInsertDocumentDialog}
           openUpdateDocumentModal={openUpdateDocumentModal}
+          hasProjection={hasProjection}
         />
       );
     },
@@ -103,6 +106,7 @@ const VirtualizedDocumentJsonView: React.FC<
       copyToClipboard,
       openInsertDocumentDialog,
       openUpdateDocumentModal,
+      hasProjection,
       removeDocument,
       replaceDocument,
       updateDocument,

@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useState,
-  useRef,
-  useMemo,
-} from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   css,
   cx,
@@ -21,31 +15,18 @@ import {
   ActionButton,
   useSafeIntegerLinter,
 } from '@mongodb-js/compass-editor';
-import type { EditorRef, Action } from '@mongodb-js/compass-editor';
+import type { EditorRef } from '@mongodb-js/compass-editor';
 import type { CrudActions } from '../stores/crud-store';
+import { parseUpdateDocumentText } from '../stores/crud-store';
 import { useDocumentAutocompleter } from '../hooks/use-document-autocompleter';
 import { getSafeIntegerViolationMessage } from '../utils';
 import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
+import DocumentFind from './document-find';
+import type { DocumentFindRef } from './document-find';
+import { registerDocumentSearch } from '../utils/document-search-focus';
 
 const editorStyles = css({
   minHeight: spacing[800] + spacing[400],
-  // Special case only for this view that doesn't make sense to make part of
-  // the editor component
-  '& .cm-editor': {
-    backgroundColor: `${palette.white} !important`,
-  },
-  '& .cm-gutters': {
-    backgroundColor: `${palette.white} !important`,
-  },
-});
-
-const editorDarkModeStyles = css({
-  '& .cm-editor': {
-    backgroundColor: `${palette.black} !important`,
-  },
-  '& .cm-gutters': {
-    backgroundColor: `${palette.black} !important`,
-  },
 });
 
 const editableJsonStyles = css({
@@ -96,6 +77,13 @@ const actionsSpacerStyles = css({
   flex: '1 0 auto',
 });
 
+// The search bar takes the spacer's place in the sticky header.
+const inlineSearchStyles = css({
+  flex: '1 1 auto',
+  minWidth: 0,
+  padding: 0,
+});
+
 // The edit/delete footer was designed as a bottom bar (it rounds its bottom
 // corners); when hosted in the sticky top header we neutralize its own radius
 // and let the header clip the top corners instead. It shares the row with the
@@ -106,6 +94,12 @@ const editFooterSlotStyles = css({
   '& [data-testid="document-footer"]': {
     borderRadius: 0,
   },
+});
+
+// While searching, the find input takes the free width and the footer
+// shrinks to its Cancel/Replace controls.
+const editFooterSlotBesideSearchStyles = css({
+  flex: '0 1 auto',
 });
 
 // In edit/delete mode the sticky header keeps the expand/collapse toggle to
@@ -147,6 +141,9 @@ export type JSONEditorProps = {
   copyToClipboard?: CrudActions['copyToClipboard'];
   openInsertDocumentDialog?: CrudActions['openInsertDocumentDialog'];
   openUpdateDocumentModal?: CrudActions['openUpdateDocumentModal'];
+  // With a projection the document is partial, so saving must update only the
+  // edited fields: replacing would drop every field the projection hid.
+  hasProjection?: boolean;
 };
 
 const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
@@ -156,9 +153,11 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   isTimeSeries = false,
   removeDocument,
   replaceDocument,
+  updateDocument,
   copyToClipboard,
   openInsertDocumentDialog,
   openUpdateDocumentModal,
+  hasProjection = false,
 }) => {
   const darkMode = useDarkMode();
   const editorRef = useRef<EditorRef>(null);
@@ -173,7 +172,7 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
     null
   );
   const handleCopy = useCallback(() => {
-    copyToClipboard?.(doc, 'ejson');
+    void copyToClipboard?.(doc, 'ejson');
   }, [copyToClipboard, doc]);
 
   const handleClone = useCallback(() => {
@@ -186,7 +185,7 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   const onChange = useCallback(
     (value: string) => {
       try {
-        HadronDocument.FromEJSON(value);
+        parseUpdateDocumentText(value);
         setDocValidationError(null);
       } catch (error) {
         setDocValidationError(error as Error);
@@ -221,7 +220,7 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
 
   const onOpenUpdateModal = useCallback(() => {
     suppressEditingStartedNoticeRef.current = true;
-    openUpdateDocumentModal?.(doc);
+    void openUpdateDocumentModal?.(doc);
   }, [doc, openUpdateDocumentModal]);
 
   const onEditingStarted = useCallback(() => {
@@ -234,11 +233,15 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   }, [doc]);
 
   const onUpdate = useCallback(() => {
-    const newDoc = HadronDocument.FromEJSON(value || '');
+    const newDoc = parseUpdateDocumentText(value || '');
     newDoc.preserveTypes(doc);
     doc.apply(newDoc);
-    void replaceDocument?.(doc);
-  }, [doc, replaceDocument, value]);
+    if (hasProjection) {
+      void updateDocument?.(doc);
+    } else {
+      void replaceDocument?.(doc);
+    }
+  }, [doc, hasProjection, replaceDocument, updateDocument, value]);
 
   const onEditingFinished = useCallback(() => {
     suppressEditingStartedNoticeRef.current = false;
@@ -279,57 +282,50 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   const canOpenUpdateModal =
     !!openUpdateDocumentModal && !deleting && !isTimeSeries;
 
-  const actions = useMemo<Action[]>(() => {
-    if (editing) {
-      return [];
-    }
+  const containerRef = useRef<HTMLDivElement>(null);
+  const findRef = useRef<DocumentFindRef>(null);
+  const [searching, setSearching] = useState(false);
 
-    return [
-      isEditable && {
-        icon: 'Edit',
-        label: 'Edit',
-        action() {
-          onEdit();
-        },
-      },
-      canOpenUpdateModal && {
-        icon: 'Wrench',
-        label: 'Update document',
-        action() {
-          onOpenUpdateModal();
-        },
-      },
-      {
-        icon: 'Copy',
-        label: 'Copy',
-        action() {
-          handleCopy();
-          return true;
-        },
-      },
-      isEditable && {
-        icon: 'Clone',
-        label: 'Clone',
-        action: handleClone,
-      },
-      isEditable && {
-        icon: 'Trash',
-        label: 'Delete',
-        action() {
-          onMarkForDeletion();
-        },
-      },
-    ].filter(Boolean) as Action[];
-  }, [
-    editing,
-    onEdit,
-    onOpenUpdateModal,
-    onMarkForDeletion,
-    handleClone,
-    handleCopy,
-    isEditable,
-    canOpenUpdateModal,
-  ]);
+  const closeSearch = useCallback(() => {
+    editorRef.current?.clearSearch();
+    setSearching(false);
+  }, []);
+
+  // Searching expands the document so matches inside folded sub-documents
+  // and arrays are visible when navigated to.
+  const openSearch = useCallback(() => {
+    if (searching) {
+      findRef.current?.focus();
+      return;
+    }
+    doc.expand();
+    setSearching(true);
+  }, [doc, searching]);
+
+  const toggleSearch = useCallback(() => {
+    if (searching) {
+      closeSearch();
+    } else {
+      openSearch();
+    }
+  }, [searching, closeSearch, openSearch]);
+
+  const openSearchRef = useRef(openSearch);
+  useEffect(() => {
+    openSearchRef.current = openSearch;
+  }, [openSearch]);
+
+  useEffect(() => {
+    return registerDocumentSearch({
+      contains: (node) => containerRef.current?.contains(node) ?? false,
+      openSearch: () => openSearchRef.current(),
+    });
+  }, []);
+
+  const handleCopyAction = useCallback(() => {
+    handleCopy();
+    return true;
+  }, [handleCopy]);
 
   useEffect(() => {
     doc.on(HadronDocument.Events.Cancel, onCancel);
@@ -422,8 +418,23 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
   // sits beside the row actions.
   const showEditFooter = editing || deleting;
 
+  const documentFind = (
+    <DocumentFind
+      ref={findRef}
+      className={inlineSearchStyles}
+      searchTargetRef={editorRef}
+      focusOnMount
+      onClose={closeSearch}
+      data-testid="document-search"
+    />
+  );
+
   return (
-    <div data-testid="editable-json" className={editableJsonStyles}>
+    <div
+      ref={containerRef}
+      data-testid="editable-json"
+      className={editableJsonStyles}
+    >
       <div
         className={cx(
           stickyHeaderStyles,
@@ -439,10 +450,22 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
               onClick={toggleExpandCollapse}
               compact
             />
-            <div className={editFooterSlotStyles}>
+            <ActionButton
+              label="Search in document"
+              icon="MagnifyingGlass"
+              onClick={toggleSearch}
+              compact
+            />
+            {searching && documentFind}
+            <div
+              className={cx(
+                editFooterSlotStyles,
+                searching && editFooterSlotBesideSearchStyles
+              )}
+            >
               <DocumentList.DocumentEditActionsFooter
                 doc={doc}
-                alwaysForceUpdate
+                alwaysForceUpdate={!hasProjection}
                 editing={!!editing}
                 deleting={!!deleting}
                 modified={value !== initialValue}
@@ -490,20 +513,37 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
               onClick={toggleExpandCollapse}
               compact
             />
-            <span className={actionsSpacerStyles} />
-            {actions.map((action) => (
+            {searching ? (
+              documentFind
+            ) : (
+              <span className={actionsSpacerStyles} />
+            )}
+            <ActionButton
+              label="Search in document"
+              icon="MagnifyingGlass"
+              onClick={toggleSearch}
+            />
+            {isEditable && (
+              <ActionButton label="Edit" icon="Edit" onClick={onEdit} />
+            )}
+            {canOpenUpdateModal && (
               <ActionButton
-                key={action.label}
-                icon={action.icon}
-                label={action.label}
-                onClick={() => {
-                  if (!editorRef.current?.editor) {
-                    return false;
-                  }
-                  return action.action(editorRef.current.editor);
-                }}
+                label="Update document"
+                icon="Wrench"
+                onClick={onOpenUpdateModal}
               />
-            ))}
+            )}
+            <ActionButton label="Copy" icon="Copy" onClick={handleCopyAction} />
+            {isEditable && (
+              <ActionButton label="Clone" icon="Clone" onClick={handleClone} />
+            )}
+            {isEditable && (
+              <ActionButton
+                label="Delete"
+                icon="Trash"
+                onClick={onMarkForDeletion}
+              />
+            )}
           </div>
         )}
       </div>
@@ -523,7 +563,7 @@ const JSONEditor: React.FunctionComponent<JSONEditorProps> = ({
           minLines={3}
           readOnly={!editing}
           showLineNumbers={editing}
-          className={cx(editorStyles, darkMode && editorDarkModeStyles)}
+          className={editorStyles}
           completer={completer}
           expanded={expanded}
           linter={safeIntegerLinter}

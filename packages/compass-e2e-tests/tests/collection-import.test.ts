@@ -28,7 +28,6 @@ const { expect } = chai;
 
 async function importJSONFile(browser: CompassBrowser, jsonPath: string) {
   // open the import modal
-  await browser.clickVisible(Selectors.AddDataButton);
   const insertDocumentOption = browser.$(Selectors.ImportFileOption);
   await insertDocumentOption.waitForDisplayed();
   await browser.clickVisible(Selectors.ImportFileOption);
@@ -158,7 +157,6 @@ describe('Collection import', function () {
     const initialDocCount = await getDocumentCount();
 
     // browse to the "Insert to Collection" modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.InsertDocumentOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.InsertDocumentOption);
@@ -222,7 +220,6 @@ describe('Collection import', function () {
     );
 
     // browse to the "Insert to Collection" modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.InsertDocumentOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.InsertDocumentOption);
@@ -312,7 +309,6 @@ describe('Collection import', function () {
     const json = JSON.stringify(array);
 
     // browse to the "Insert to Collection" modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.InsertDocumentOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.InsertDocumentOption);
@@ -369,7 +365,6 @@ describe('Collection import', function () {
     const json = 'this is not valid JSON';
 
     // browse to the "Insert to Collection" modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.InsertDocumentOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.InsertDocumentOption);
@@ -496,7 +491,6 @@ describe('Collection import', function () {
     );
 
     // open the import modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.ImportFileOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.ImportFileOption);
@@ -552,7 +546,6 @@ describe('Collection import', function () {
       await browser.navigateWithinCurrentCollectionTabs('Documents');
 
       // open the import modal
-      await browser.clickVisible(Selectors.AddDataButton);
       const insertDocumentOption = browser.$(Selectors.ImportFileOption);
       await insertDocumentOption.waitForDisplayed();
       await browser.clickVisible(Selectors.ImportFileOption);
@@ -607,7 +600,6 @@ describe('Collection import', function () {
       await browser.navigateWithinCurrentCollectionTabs('Documents');
 
       // open the import modal
-      await browser.clickVisible(Selectors.AddDataButton);
       const insertDocumentOption = browser.$(Selectors.ImportFileOption);
       await insertDocumentOption.waitForDisplayed();
       await browser.clickVisible(Selectors.ImportFileOption);
@@ -671,7 +663,6 @@ describe('Collection import', function () {
     );
 
     // open the import modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.ImportFileOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.ImportFileOption);
@@ -795,7 +786,6 @@ describe('Collection import', function () {
     );
 
     // open the import modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.ImportFileOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.ImportFileOption);
@@ -951,7 +941,6 @@ describe('Collection import', function () {
     );
 
     // open the import modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.ImportFileOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.ImportFileOption);
@@ -1042,7 +1031,6 @@ describe('Collection import', function () {
     );
 
     // open the import modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.ImportFileOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.ImportFileOption);
@@ -1097,7 +1085,6 @@ describe('Collection import', function () {
     );
 
     // open the import modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.ImportFileOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.ImportFileOption);
@@ -1182,7 +1169,6 @@ describe('Collection import', function () {
     await importJSONFile(browser, jsonPath);
 
     // Open the import modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.ImportFileOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.ImportFileOption);
@@ -1239,7 +1225,6 @@ describe('Collection import', function () {
     await importJSONFile(browser, jsonPath);
 
     // Open the import modal.
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.ImportFileOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.ImportFileOption);
@@ -1309,7 +1294,6 @@ describe('Collection import', function () {
       );
 
       // Open the import modal.
-      await browser.clickVisible(Selectors.AddDataButton);
       const insertDocumentOption = browser.$(Selectors.ImportFileOption);
       await insertDocumentOption.waitForDisplayed();
       await browser.clickVisible(Selectors.ImportFileOption);
@@ -1378,7 +1362,6 @@ describe('Collection import', function () {
       );
 
       // Open the import modal.
-      await browser.clickVisible(Selectors.AddDataButton);
       const insertDocumentOption = browser.$(Selectors.ImportFileOption);
       await insertDocumentOption.waitForDisplayed();
       await browser.clickVisible(Selectors.ImportFileOption);
@@ -1443,7 +1426,6 @@ describe('Collection import', function () {
       );
 
       // Open the import modal.
-      await browser.clickVisible(Selectors.AddDataButton);
       const insertDocumentOption = browser.$(Selectors.ImportFileOption);
       await insertDocumentOption.waitForDisplayed();
       await browser.clickVisible(Selectors.ImportFileOption);

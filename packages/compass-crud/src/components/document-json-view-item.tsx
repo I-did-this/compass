@@ -29,6 +29,7 @@ export type DocumentJsonViewItemProps = {
   | 'updateDocument'
   | 'openInsertDocumentDialog'
   | 'openUpdateDocumentModal'
+  | 'hasProjection'
 >;
 
 const DocumentJsonViewItem: React.FC<DocumentJsonViewItemProps> = ({
@@ -45,6 +46,7 @@ const DocumentJsonViewItem: React.FC<DocumentJsonViewItemProps> = ({
   updateDocument,
   openInsertDocumentDialog,
   openUpdateDocumentModal,
+  hasProjection,
 }) => {
   const contextMenuRef = useDocumentItemContextMenu({
     doc,
@@ -71,6 +73,7 @@ const DocumentJsonViewItem: React.FC<DocumentJsonViewItemProps> = ({
         updateDocument={updateDocument}
         openInsertDocumentDialog={openInsertDocumentDialog}
         openUpdateDocumentModal={openUpdateDocumentModal}
+        hasProjection={hasProjection}
       />
     </KeylineCard>
   );

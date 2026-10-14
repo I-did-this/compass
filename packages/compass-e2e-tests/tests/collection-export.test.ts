@@ -90,7 +90,6 @@ describe('Collection export', function () {
       await browser.runFindOperation('Documents', '{ i: 5 }');
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(Selectors.ExportCollectionQueryOption);
       await browser.waitForOpenModal(Selectors.ExportModal);
 
@@ -168,7 +167,6 @@ describe('Collection export', function () {
       await browser.runFindOperation('Documents', '{ i: 5 }');
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(Selectors.ExportCollectionQueryOption);
       await browser.waitForOpenModal(Selectors.ExportModal);
 
@@ -234,7 +232,6 @@ describe('Collection export', function () {
       });
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(Selectors.ExportCollectionQueryOption);
       await browser.waitForOpenModal(Selectors.ExportModal);
 
@@ -295,7 +292,6 @@ describe('Collection export', function () {
       await browser.runFindOperation('Documents', '{ i: 5 }');
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(
         Selectors.ExportCollectionFullCollectionOption
       );
@@ -344,7 +340,6 @@ describe('Collection export', function () {
       await browser.runFindOperation('Documents', '{ i: 5 }');
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(Selectors.ExportCollectionQueryOption);
       await browser.waitForOpenModal(Selectors.ExportModal);
 
@@ -420,7 +415,6 @@ describe('Collection export', function () {
       await browser.runFindOperation('Documents', '{ i: 5 }');
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(Selectors.ExportCollectionQueryOption);
       await browser.waitForOpenModal(Selectors.ExportModal);
 
@@ -481,7 +475,6 @@ describe('Collection export', function () {
       await browser.runFindOperation('Documents', '{ i: 5 }');
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(
         Selectors.ExportCollectionFullCollectionOption
       );
@@ -528,7 +521,6 @@ describe('Collection export', function () {
       await browser.runFindOperation('Documents', '{ i: 5 }');
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(
         Selectors.ExportCollectionFullCollectionOption
       );
@@ -604,7 +596,6 @@ describe('Collection export', function () {
         );
 
         // Open the modal.
-        await browser.clickVisible(Selectors.ExportCollectionMenuButton);
         await browser.clickVisible(Selectors.ExportCollectionQueryOption);
         await browser.waitForOpenModal(Selectors.ExportModal);
 
@@ -704,7 +695,6 @@ describe('Collection export', function () {
         );
 
         // Open the modal.
-        await browser.clickVisible(Selectors.ExportCollectionMenuButton);
         await browser.clickVisible(Selectors.ExportCollectionQueryOption);
         await browser.waitForOpenModal(Selectors.ExportModal);
 
@@ -794,7 +784,6 @@ describe('Collection export', function () {
         );
 
         // Open the modal.
-        await browser.clickVisible(Selectors.ExportCollectionMenuButton);
         await browser.clickVisible(Selectors.ExportCollectionQueryOption);
         await browser.waitForOpenModal(Selectors.ExportModal);
 
@@ -900,7 +889,6 @@ describe('Collection export', function () {
       });
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(Selectors.ExportCollectionQueryOption);
       await browser.waitForOpenModal(Selectors.ExportModal);
 
@@ -995,7 +983,6 @@ describe('Collection export', function () {
       });
 
       // Open the modal.
-      await browser.clickVisible(Selectors.ExportCollectionMenuButton);
       await browser.clickVisible(Selectors.ExportCollectionQueryOption);
       await browser.waitForOpenModal(Selectors.ExportModal);
 

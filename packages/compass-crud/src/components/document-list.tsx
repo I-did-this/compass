@@ -86,6 +86,9 @@ export type DocumentListProps = {
   saveUpdateQuery: (name: string) => void;
   openImportFileDialog?: (origin: 'empty-state' | 'crud-toolbar') => void;
   docs: Document[];
+  allDocumentsExpanded: boolean;
+  expandAllDocuments: () => void;
+  collapseAllDocuments: () => void;
   view: DocumentView;
   insert: Partial<InsertDocumentDialogProps> &
     Required<
@@ -319,6 +322,9 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
     openImportFileDialog,
     openBulkUpdateModal,
     docs,
+    allDocumentsExpanded,
+    expandAllDocuments,
+    collapseAllDocuments,
     status,
     debouncingLoad,
     closeInsertDocumentDialog,
@@ -406,10 +412,12 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
   const canWrite =
     !preferencesReadOnly && !store.state.isDataLake && !store.state.isReadonly;
 
-  // Inline row actions (pencil/clone/trash) operate on the visible document,
-  // so a projection must not be active — the row is otherwise editing an
-  // incomplete view of the document.
-  const isEditable = canWrite && Object.keys(query.project ?? {}).length === 0;
+  // Write actions stay available with a projection: clone and copy refetch the
+  // full document, delete only needs the _id, and inline edits are saved as a
+  // field-level update rather than a replace, so the hidden fields survive
+  // (see hasProjection on the views).
+  const isEditable = canWrite;
+  const hasProjection = Object.keys(query.project ?? {}).length > 0;
 
   // The Update Document modal is safe with a projection because the store
   // refetches the full document by _id on open, so this is gated on
@@ -537,8 +545,9 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
                 canOpenUpdateModal ? props.openUpdateDocumentModal : undefined
               }
               // Projection state moves the wrench from the row corner onto
-              // each visible top-level field row in the list view.
-              hasProjection={Object.keys(query.project ?? {}).length > 0}
+              // each visible top-level field row in the list view, and turns
+              // off inline editing in every view.
+              hasProjection={hasProjection}
               outdated={outdated}
               query={query}
               initialScrollTop={currentViewInitialScrollTop}
@@ -560,6 +569,7 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
       isInitialFetch,
       isImportExportEnabled,
       isEditable,
+      hasProjection,
       canOpenUpdateModal,
       openImportFileDialog,
       props,
@@ -581,14 +591,6 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
     },
     [view, setCurrentViewInitialScrollTop, scrollRef, viewChanged]
   );
-
-  const onExpandAllClicked = useCallback(() => {
-    docs.forEach((doc) => !doc.expanded && doc.expand());
-  }, [docs]);
-
-  const onCollapseAllClicked = useCallback(() => {
-    docs.forEach((doc) => doc.expanded && doc.collapse());
-  }, [docs]);
 
   const { tellMoreAboutInsight } = useAssistantActions();
 
@@ -615,8 +617,9 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
             onResetClicked={onResetClicked}
             onUpdateButtonClicked={onUpdateButtonClicked}
             onDeleteButtonClicked={onDeleteButtonClicked}
-            onExpandAllClicked={onExpandAllClicked}
-            onCollapseAllClicked={onCollapseAllClicked}
+            areAllDocumentsExpanded={allDocumentsExpanded}
+            onExpandAllClicked={expandAllDocuments}
+            onCollapseAllClicked={collapseAllDocuments}
             openExportFileDialog={openExportFileDialog}
             onOpenExportToLanguage={store.openQueryExportToLanguageDialog.bind(
               store

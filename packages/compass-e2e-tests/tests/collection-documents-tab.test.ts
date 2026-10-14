@@ -1286,7 +1286,6 @@ FindIterable<Document> result = collection.find(filter)
     );
 
     // browse to the "Insert to Collection" modal
-    await browser.clickVisible(Selectors.AddDataButton);
     const insertDocumentOption = browser.$(Selectors.InsertDocumentOption);
     await insertDocumentOption.waitForDisplayed();
     await browser.clickVisible(Selectors.InsertDocumentOption);
@@ -1337,7 +1336,6 @@ FindIterable<Document> result = collection.find(filter)
 
   it('inserts a document using shell syntax', async function () {
     // Browse to the "Insert to Collection" modal.
-    await browser.clickVisible(Selectors.AddDataButton);
     await browser.clickVisible(Selectors.InsertDocumentOption);
     await browser.waitForOpenModal(Selectors.InsertDialog);
 
@@ -1397,7 +1395,6 @@ FindIterable<Document> result = collection.find(filter)
 
   it('converts Extended JSON to shell syntax, keeping the BSON types', async function () {
     // Browse to the "Insert to Collection" modal.
-    await browser.clickVisible(Selectors.AddDataButton);
     await browser.clickVisible(Selectors.InsertDocumentOption);
     await browser.waitForOpenModal(Selectors.InsertDialog);
 

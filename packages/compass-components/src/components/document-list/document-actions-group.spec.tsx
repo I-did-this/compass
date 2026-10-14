@@ -26,6 +26,26 @@ describe('DocumentActionsGroup', function () {
     expect(spy).to.be.calledOnce;
   });
 
+  it('should render Search action', function () {
+    const spy = Sinon.spy();
+    render(<DocumentActionsGroup onSearch={spy}></DocumentActionsGroup>);
+    expect(screen.getByTestId('search-document-button')).to.exist;
+    userEvent.click(screen.getByTestId('search-document-button'), undefined, {
+      skipPointerEventsCheck: true,
+    });
+    expect(spy).to.be.calledOnce;
+  });
+
+  it('should render toolbar content between the expand toggle and actions', function () {
+    render(
+      <DocumentActionsGroup
+        onCopy={Sinon.spy()}
+        toolbarContent={<input aria-label="Search in document" />}
+      ></DocumentActionsGroup>
+    );
+    expect(screen.getByLabelText('Search in document')).to.exist;
+  });
+
   it('should render Open-update-modal action', function () {
     const spy = Sinon.spy();
     render(

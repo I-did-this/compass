@@ -67,6 +67,11 @@ const actionsGroupItemSeparator = css({
   pointerEvents: 'none',
 });
 
+const actionsGroupToolbarContent = css({
+  flex: '1 1 auto',
+  minWidth: 0,
+});
+
 const actionsGroupIdle = css({
   '& > [data-action-item]': {
     display: 'none',
@@ -147,6 +152,7 @@ function ActionButton<TAsProp extends PolymorphicAs = 'button'>({
 
 const DocumentActionsGroup: React.FunctionComponent<
   {
+    onSearch?: () => void;
     onEdit?: () => void;
     onOpenUpdateModal?: () => void;
     onCopy?: () => void;
@@ -158,11 +164,15 @@ const DocumentActionsGroup: React.FunctionComponent<
     // hover overlay. See actionsGroupStickyContainer.
     sticky?: boolean;
     insights?: Signal | Signal[];
+    // Rendered in the flexible space between the expand toggle and the
+    // actions, e.g. an input for searching inside the document.
+    toolbarContent?: React.ReactNode;
   } & (
     | { onExpand?: never; expanded?: never }
     | { onExpand: () => void; expanded: boolean }
   )
 > = ({
+  onSearch,
   onEdit,
   onOpenUpdateModal,
   onCopy,
@@ -173,6 +183,7 @@ const DocumentActionsGroup: React.FunctionComponent<
   onlyShowOnHover = true,
   sticky = false,
   insights,
+  toolbarContent,
 }) => {
   const darkMode = useDarkMode();
   const [signalOpened, setSignalOpened] = useState(false);
@@ -226,7 +237,11 @@ const DocumentActionsGroup: React.FunctionComponent<
           tooltipText={expanded ? 'Collapse all' : 'Expand all'}
         />
       )}
-      <span className={actionsGroupItemSeparator}></span>
+      {toolbarContent ? (
+        <div className={actionsGroupToolbarContent}>{toolbarContent}</div>
+      ) : (
+        <span className={actionsGroupItemSeparator}></span>
+      )}
       {insights && (
         <div
           className={cx(actionsGroupItem, actionsGroupSignalPopover)}
@@ -237,6 +252,18 @@ const DocumentActionsGroup: React.FunctionComponent<
             onPopoverOpenChange={setSignalOpened}
           ></SignalPopover>
         </div>
+      )}
+      {onSearch && (
+        <ActionButton
+          tooltipEnabled={isActive}
+          size="xsmall"
+          rightGlyph={<Icon role="presentation" glyph="MagnifyingGlass"></Icon>}
+          aria-label="Search in document"
+          data-testid="search-document-button"
+          onClick={onSearch}
+          className={actionsGroupItem}
+          tooltipText="Search in document"
+        />
       )}
       {onEdit && (
         <ActionButton

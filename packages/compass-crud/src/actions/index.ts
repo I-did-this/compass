@@ -9,6 +9,8 @@ const configureActions = () => {
     'copyToClipboard',
     'documentRemoved',
     'drillDown',
+    'expandAllDocuments',
+    'collapseAllDocuments',
     'elementAdded',
     'elementMarkRemoved',
     'elementRemoved',

@@ -82,6 +82,7 @@ export const getContext = function (path) {
     addFooter: sinon.spy(),
     handleClone: sinon.spy(),
     handleCopy: sinon.spy(),
+    handleOpenUpdateModal: sinon.spy(),
   };
 };
 

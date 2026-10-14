@@ -59,7 +59,6 @@ describe('Bulk Delete', function () {
     await browser.runFindOperation('Documents', '{ i: 5 }');
 
     // Open the modal.
-    await browser.clickVisible(Selectors.BulkActionsButton);
     await browser.clickVisible(Selectors.OpenBulkDeleteButton);
     await browser.waitForOpenModal(Selectors.BulkDeleteModal);
 
@@ -137,7 +136,6 @@ describe('Bulk Delete', function () {
     await browser.runFindOperation('Documents', '{ i: 5 }');
 
     // Open the modal.
-    await browser.clickVisible(Selectors.BulkActionsButton);
     await browser.clickVisible(Selectors.OpenBulkDeleteButton);
     await browser.waitForOpenModal(Selectors.BulkDeleteModal);
 
@@ -180,7 +178,6 @@ describe('Bulk Delete', function () {
     await browser.runFindOperation('Documents', '{ i: 5 }');
 
     // Open the modal.
-    await browser.clickVisible(Selectors.BulkActionsButton);
     await browser.clickVisible(Selectors.OpenBulkDeleteButton);
     await browser.waitForOpenModal(Selectors.BulkDeleteModal);
 

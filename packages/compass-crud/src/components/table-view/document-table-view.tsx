@@ -9,14 +9,16 @@ import BreadcrumbComponent from './breadcrumb';
 import CellRenderer from './cell-renderer';
 import RowNumberRenderer from './row-number-renderer';
 import FullWidthCellRenderer from './full-width-cell-renderer';
-import RowActionsRenderer from './row-actions-renderer';
+import RowActionsRenderer, {
+  getRowActionsColumnWidth,
+} from './row-actions-renderer';
 import HeaderComponent from './header-cell-renderer';
 import type { DocumentTableRowNode } from './cell-editor';
 import CellEditor from './cell-editor';
 import { gridTheme } from './grid-theme';
 
 import './document-table-view.less';
-import { cx, spacing, withDarkMode } from '@mongodb-js/compass-components';
+import { cx, withDarkMode } from '@mongodb-js/compass-components';
 import type {
   BSONObject,
   CrudActions,
@@ -55,9 +57,13 @@ export type DocumentTableViewProps = {
   elementTypeChanged: GridActions['elementTypeChanged'];
   error: unknown;
   isEditable: boolean;
+  // With a projection only part of each document is shown, so saving an edit
+  // must never replace the document (see FullWidthCellRenderer).
+  hasProjection?: boolean;
   ns: string;
   version: string;
   openInsertDocumentDialog?: CrudActions['openInsertDocumentDialog'];
+  openUpdateDocumentModal?: CrudActions['openUpdateDocumentModal'];
   pathChanged: (path: (string | number)[], types: TableHeaderType[]) => void;
   removeColumn: GridActions['removeColumn'];
   copyToClipboard: (doc: Document) => void;
@@ -89,6 +95,7 @@ export type GridContext = {
     state: 'editing' | 'deleting'
   ) => void;
   handleClone: (data: { hadronDocument: Document }) => void;
+  handleOpenUpdateModal: (data: { hadronDocument: Document }) => void;
 };
 
 /**
@@ -110,6 +117,7 @@ export class DocumentTableView extends React.Component<DocumentTableViewProps> {
       handleUpdate: this.handleUpdate,
       handleRemove: this.handleRemove,
       handleClone: this.handleClone,
+      handleOpenUpdateModal: this.handleOpenUpdateModal,
       path: [],
     };
     const sharedGridProperties: AgGridReactProps = {
@@ -150,6 +158,7 @@ export class DocumentTableView extends React.Component<DocumentTableViewProps> {
         removeDocument: this.props.removeDocument,
         replaceDocument: this.props.replaceDocument,
         updateDocument: this.props.updateDocument,
+        hasProjection: this.props.hasProjection,
         darkMode: this.props.darkMode,
       },
       getRowId: function ({ data }) {
@@ -194,6 +203,14 @@ export class DocumentTableView extends React.Component<DocumentTableViewProps> {
       this.handleInsert();
     }
   }
+
+  handleOpenUpdateModal = ({
+    hadronDocument,
+  }: {
+    hadronDocument: Document;
+  }) => {
+    void this.props.openUpdateDocumentModal?.(hadronDocument);
+  };
 
   /**
    * Handle cloning of the document.
@@ -1004,13 +1021,16 @@ export class DocumentTableView extends React.Component<DocumentTableViewProps> {
       cellRendererParams: {
         nested: path.length !== 0,
         isEditable: this.props.isEditable,
+        canOpenUpdateModal: !!this.props.openUpdateDocumentModal,
         copyToClipboard: this.props.copyToClipboard,
         timezone: this.props.timezone,
       },
       editable: false,
       pinned: 'right',
-      // button group width + padding (8 * 2)
-      width: spacing[7] + spacing[400],
+      width: getRowActionsColumnWidth({
+        nested: path.length !== 0,
+        canOpenUpdateModal: !!this.props.openUpdateDocumentModal,
+      }),
     });
 
     /* Return the updated column definitions */

@@ -1,6 +1,12 @@
 import React, { type ComponentProps } from 'react';
 import { expect } from 'chai';
-import { render, screen } from '@mongodb-js/testing-library-compass';
+import sinon from 'sinon';
+import {
+  render,
+  screen,
+  userEvent,
+  waitFor,
+} from '@mongodb-js/testing-library-compass';
 import JSONEditor from './json-editor';
 import HadronDocument from 'hadron-document';
 import { setCodemirrorEditorValue } from '@mongodb-js/compass-editor';
@@ -48,6 +54,78 @@ describe('JSONEditor', function () {
         screen.queryByTestId('editor-action-Expand all') ??
           screen.queryByTestId('editor-action-Collapse all')
       ).to.exist;
+    });
+  });
+
+  context('with a projection', function () {
+    it('shows the Edit action', function () {
+      renderJSONEditor({ hasProjection: true }, { editing: false });
+      expect(screen.getByTestId('editor-action-Edit')).to.exist;
+    });
+
+    it('saves only the edited fields instead of replacing the document', async function () {
+      const updateDocument = sinon.spy();
+      const replaceDocument = sinon.spy();
+      renderJSONEditor({
+        hasProjection: true,
+        updateDocument,
+        replaceDocument,
+      });
+
+      await setCodemirrorEditorValue(
+        screen.getByTestId('json-editor'),
+        '{ "_id": 1, "name": "changed" }'
+      );
+      userEvent.click(screen.getByTestId('update-button'));
+
+      expect(updateDocument).to.have.been.calledOnce;
+      expect(replaceDocument).to.not.have.been.called;
+    });
+  });
+
+  context('search in document', function () {
+    it('opens a search bar that counts matches in the document', async function () {
+      renderJSONEditor(
+        {
+          doc: new HadronDocument({
+            _id: 1,
+            email: 'nehal@callhippo.com',
+            profile: { firstName: 'NEHAL' },
+          }),
+        },
+        { editing: false }
+      );
+
+      userEvent.click(screen.getByTestId('editor-action-Search in document'));
+      const input = await screen.findByTestId('document-search-input');
+      userEvent.type(input, 'nehal');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('document-search-counter')).to.have.text(
+          '1 of 2'
+        );
+      });
+    });
+
+    it('can search while the document is being edited', async function () {
+      const doc = new HadronDocument({
+        _id: 1,
+        email: 'nehal@callhippo.com',
+        profile: { firstName: 'NEHAL' },
+      });
+      doc.editing = true;
+      renderJSONEditor({ doc });
+
+      userEvent.click(screen.getByTestId('editor-action-Search in document'));
+      const input = await screen.findByTestId('document-search-input');
+      userEvent.type(input, 'nehal');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('document-search-counter')).to.have.text(
+          '1 of 2'
+        );
+      });
+      expect(screen.getByTestId('update-button')).to.exist;
     });
   });
 

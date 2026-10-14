@@ -7,7 +7,6 @@ export async function tryToInsertDocument(
   document?: string
 ) {
   // browse to the "Insert to Collection" modal
-  await browser.clickVisible(Selectors.AddDataButton);
   const insertDocumentOption = browser.$(Selectors.InsertDocumentOption);
   await insertDocumentOption.waitForDisplayed();
   await browser.clickVisible(Selectors.InsertDocumentOption);
