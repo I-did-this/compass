@@ -1,6 +1,6 @@
-import { type HadronIpcMain, ipcMain } from 'hadron-ipc';
+import fsPromises from 'node:fs/promises';
+import { type HadronIpcMain, ipcMain } from '@mongodb-js/hadron-ipc';
 import { safeStorage } from 'electron';
-import fsPromises from 'fs/promises';
 import ConnectionString from 'mongodb-connection-string-url';
 
 import type {
@@ -9,8 +9,9 @@ import type {
 } from '@mongodb-js/connection-info';
 import { createLogger } from '@mongodb-js/compass-logging';
 import { mergeSecrets, extractSecrets } from '@mongodb-js/connection-info';
-import { deleteCompassAppNameParam } from './utils';
 import { throwIfAborted } from '@mongodb-js/compass-utils';
+import { FileUserData, z } from '@mongodb-js/compass-user-data';
+import { deleteCompassAppNameParam } from './utils';
 import {
   serializeConnections,
   deserializeConnections,
@@ -19,7 +20,6 @@ import type {
   ImportConnectionOptions,
   ExportConnectionOptions,
 } from './import-export-connection';
-import { FileUserData, z } from '@mongodb-js/compass-user-data';
 import type {
   ConnectionStorage,
   AutoConnectPreferences,
@@ -49,12 +49,12 @@ export type ConnectionWithLegacyProps = ConnectionProps & ConnectionLegacyProps;
 
 const ConnectionSchema: z.Schema<ConnectionWithLegacyProps> = z
   .object({
-    _id: z.string().uuid().optional(),
+    _id: z.uuid().optional(),
     isFavorite: z.boolean().optional(),
     name: z.string().optional(),
     connectionInfo: z
       .object({
-        id: z.string().uuid(),
+        id: z.uuid(),
         lastUsed: z.coerce
           .date()
           .optional()
@@ -76,7 +76,7 @@ const ConnectionSchema: z.Schema<ConnectionWithLegacyProps> = z
     version: z.number().optional(),
     connectionSecrets: z.string().optional(),
   })
-  .passthrough();
+  .loose();
 
 class CompassMainConnectionStorage implements ConnectionStorage {
   private readonly userData: FileUserData<typeof ConnectionSchema>;

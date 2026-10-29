@@ -1,15 +1,12 @@
 import React, { useCallback } from 'react';
-import type { UserConfigurablePreferences } from 'compass-preferences-model';
+import type { UserConfigurablePreferences } from '@mongodb-js/compass-preferences-model';
 import {
   getSettingDescription,
   featureFlags,
-} from 'compass-preferences-model/provider';
-import {
   SORT_ORDER_VALUES,
   LEGACY_UUID_ENCODINGS,
   TIMEZONES,
-} from 'compass-preferences-model/provider';
-import { settingStateLabels } from './state-labels';
+} from '@mongodb-js/compass-preferences-model/provider';
 import {
   Checkbox,
   Label,
@@ -25,11 +22,12 @@ import {
   ComboboxOption,
   Icon,
 } from '@mongodb-js/compass-components';
+import { connect } from 'react-redux';
 import { changeFieldValue } from '../../stores/settings';
 import type { RootState } from '../../stores';
-import { connect } from 'react-redux';
 import type { SettingsDescriptionComponent } from '../settings-descriptions';
 import { SETTINGS_DESCRIPTIONS_MAP } from '../settings-descriptions';
+import { settingStateLabels } from './state-labels';
 
 const ENUM_PREFERENCE_CONFIG = {
   defaultSortOrder: SORT_ORDER_VALUES,

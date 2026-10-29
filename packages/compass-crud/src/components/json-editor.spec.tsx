@@ -7,9 +7,9 @@ import {
   userEvent,
   waitFor,
 } from '@mongodb-js/testing-library-compass';
-import JSONEditor from './json-editor';
 import HadronDocument from 'hadron-document';
 import { setCodemirrorEditorValue } from '@mongodb-js/compass-editor';
+import JSONEditor from './json-editor';
 
 function renderJSONEditor(
   props: Partial<ComponentProps<typeof JSONEditor>> = {},

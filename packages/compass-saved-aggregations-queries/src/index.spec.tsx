@@ -1,8 +1,6 @@
 import React from 'react';
 import Sinon from 'sinon';
 import { expect } from 'chai';
-import { queries, pipelines } from '../test/fixtures';
-import { WorkspaceTab } from '.';
 import type {
   PipelineStorage,
   FavoriteQueryStorage,
@@ -22,7 +20,12 @@ import {
   within,
   waitFor,
   userEvent,
+  fireEvent,
 } from '@mongodb-js/testing-library-compass';
+import { queries, pipelines } from '../test/fixtures';
+import { WorkspaceTab } from '.';
+
+const ASYNC_TIMEOUT = 5000;
 
 let id = 0;
 function getConnection() {
@@ -118,14 +121,25 @@ describe('AggregationsAndQueriesAndUpdatemanyList', function () {
       if (!card) {
         throw new Error('Query card not yet rendered');
       }
-      userEvent.hover(card);
+      fireEvent.mouseEnter(card);
       expect(screen.getByTestId('saved-item-actions-show-actions')).to.exist;
       return card;
     });
-    userEvent.click(screen.getByTestId('saved-item-actions-show-actions'));
-    userEvent.click(
-      await screen.findByTestId(`saved-item-actions-${item}-action`)
+
+    await waitFor(
+      () => {
+        if (!screen.queryByTestId(`saved-item-actions-${item}-action`)) {
+          userEvent.click(
+            screen.getByTestId('saved-item-actions-show-actions')
+          );
+        }
+        expect(screen.queryByTestId(`saved-item-actions-${item}-action`)).to
+          .exist;
+      },
+      { timeout: ASYNC_TIMEOUT, interval: 500 }
     );
+
+    userEvent.click(screen.getByTestId(`saved-item-actions-${item}-action`));
     return queryCard;
   };
 

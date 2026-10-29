@@ -1,12 +1,13 @@
 import { expect } from 'chai';
 import Sinon from 'sinon';
-import type { PreferencesAccess } from 'compass-preferences-model';
-import { createSandboxFromDefaultPreferences } from 'compass-preferences-model';
+import type { PreferencesAccess } from '@mongodb-js/compass-preferences-model';
+import { createSandboxFromDefaultPreferences } from '@mongodb-js/compass-preferences-model';
 import type { AtlasAiService } from '@mongodb-js/compass-generative-ai/provider';
 import type { DataService } from 'mongodb-data-service';
 import configureReduxStore, {
   MockAtlasAiService,
 } from '../../../test/configure-store';
+import { toggleAutoPreview } from '../auto-preview';
 import {
   AIPipelineActionTypes,
   AI_INPUT_VISIBLE_STORAGE_KEY,
@@ -16,7 +17,6 @@ import {
   showInput,
   hideInput,
 } from './pipeline-ai';
-import { toggleAutoPreview } from '../auto-preview';
 
 describe('AIPipelineReducer', function () {
   const sandbox = Sinon.createSandbox();

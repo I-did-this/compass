@@ -48,11 +48,12 @@ module.exports = {
   'devtools-shared-prod': [
     '@mongodb-js/get-os-info',
     '@mongodb-js/mongodb-constants',
+    '@mongodb-js/mongodb-build-info',
+    '@mongodb-js/mongodb-ns',
     '@mongodb-js/device-id',
     '@mongodb-js/shell-bson-parser',
     '@mongodb-js/native-machine-id',
     'mongodb-cloud-info',
-    'mongodb-query-parser',
   ],
   'devtools-shared-dev': [
     '@mongodb-js/dl-center',

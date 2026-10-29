@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import Sinon from 'sinon';
+import type { AtlasServiceLike } from '@mongodb-js/compass-user-data';
 import { CompassWebPreferencesAccess } from './compass-web-preferences-access';
 import { AtlasPreferencesStorage } from './preferences-atlas';
-import type { AtlasServiceLike } from '@mongodb-js/compass-user-data';
 
 describe('CompassWebPreferencesAccess', function () {
   let sandbox: Sinon.SinonSandbox;
@@ -75,5 +75,18 @@ describe('CompassWebPreferencesAccess', function () {
     expect(await settingsFor(sandboxAccess)).to.deep.equal(
       await settingsFor(access)
     );
+  });
+
+  it('keeps role-derived preferences non-editable in the sandbox it creates', async function () {
+    const access = new CompassWebPreferencesAccess(undefined, {
+      atlasCloudUser: { readOnly: true, timezone: 'UTC' },
+    });
+    const sandboxAccess = await access.createSandbox();
+
+    const states = await sandboxAccess.getPreferenceStates();
+
+    expect(states).to.include({ readOnly: 'set-cloud-user' });
+    // Value seeds like timezone stay editable.
+    expect(states).to.not.have.property('timezone');
   });
 });

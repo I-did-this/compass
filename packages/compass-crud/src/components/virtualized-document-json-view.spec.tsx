@@ -13,6 +13,7 @@ import {
 import sinon from 'sinon';
 import { type VirtualListRef } from '@mongodb-js/compass-components';
 
+
 import VirtualizedDocumentJsonView from './virtualized-document-json-view';
 
 const createBigDocument = (variable: number) =>
@@ -134,7 +135,7 @@ describe('VirtualizedDocumentJsonView', function () {
     );
 
     const [documentElement] = screen.getAllByTestId('editable-json');
-    userEvent.click(within(documentElement).getByLabelText('Edit'));
+    userEvent.click(within(documentElement).getByLabelText('Update document'));
 
     // Editing routes through the modal rather than an inline editor.
     expect(within(documentElement).queryByText('Cancel')).to.not.exist;
@@ -171,7 +172,7 @@ describe('VirtualizedDocumentJsonView', function () {
     });
 
     const [firstDocumentElement] = screen.getAllByTestId('editable-json');
-    userEvent.click(within(firstDocumentElement).getByLabelText('Edit'));
+    userEvent.click(within(firstDocumentElement).getByLabelText('Update document'));
 
     // The recycled row is still functional and routes editing to the modal.
     await waitFor(() => {

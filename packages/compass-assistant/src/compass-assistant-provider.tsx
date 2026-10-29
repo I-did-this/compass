@@ -1,6 +1,4 @@
 import React, { type PropsWithChildren, useRef } from 'react';
-import { type UIMessage } from './@ai-sdk/react/use-chat';
-import { Chat } from './@ai-sdk/react/chat-react';
 import { createContext, useContext } from 'react';
 import {
   createServiceLocator,
@@ -12,33 +10,17 @@ import {
   type AtlasService,
   atlasServiceLocator,
 } from '@mongodb-js/atlas-service/provider';
-import { DocsProviderTransport } from './docs-provider-transport';
 import {
   useCurrentValueRef,
   useDrawerActions,
   useInitialValue,
 } from '@mongodb-js/compass-components';
 import {
-  buildConnectionErrorPrompt,
-  buildContextPrompt,
-  buildDiagnoseSearchStagePrompt,
-  buildExplainPlanPrompt,
-  buildProactiveInsightsPrompt,
-  buildAnalyzeOutputPrompt,
-  buildDebugSearchErrorPrompt,
-  type DiagnoseSearchStageContext,
-  type EntryPointMessage,
-  type ProactiveInsightsContext,
-  type AnalyzeOutputContext,
-  type DebugSearchErrorContext,
-  TOOL_DENIAL_REASONS,
-} from './prompts';
-import {
   type PreferencesAccess,
   preferencesLocator,
   useIsAIFeatureEnabled,
   usePreference,
-} from 'compass-preferences-model/provider';
+} from '@mongodb-js/compass-preferences-model/provider';
 import {
   createLoggerLocator,
   type Logger,
@@ -59,19 +41,12 @@ import type {
 import {
   atlasAiServiceLocator,
   toolsControllerLocator,
+  AI_MODEL_AGENT_VERSION,
+  AI_MODEL_CHAT_VERSION,
 } from '@mongodb-js/compass-generative-ai/provider';
-import { buildConversationInstructionsPrompt } from './prompts';
 import type { AtlasAdminApiService } from '@mongodb-js/atlas-admin-api/provider';
 import { atlasAdminApiServiceLocator } from '@mongodb-js/atlas-admin-api/provider';
 import { createOpenAI } from '@ai-sdk/openai';
-import type {
-  ActiveConnectionInfo,
-  GlobalState,
-} from './assistant-global-state';
-import {
-  AssistantGlobalStateProvider,
-  useAssistantGlobalState,
-} from './assistant-global-state';
 import { lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import type { ToolSet } from 'ai';
 import type {
@@ -79,20 +54,43 @@ import type {
   WorkspaceTab,
 } from '@mongodb-js/workspace-info';
 import { UUID } from 'bson';
-import {
-  getHashedActiveUserId,
-  partIsApprovalRequest,
-  stopChat,
-} from './utils';
 import { createStore, applyMiddleware } from 'redux';
 import thunk from 'redux-thunk';
 import type { ThunkAction } from 'redux-thunk';
 import type { Action, AnyAction } from 'redux';
 import { connect } from 'react-redux';
 import {
-  AI_MODEL_AGENT_VERSION,
-  AI_MODEL_CHAT_VERSION,
-} from '@mongodb-js/compass-generative-ai/provider';
+  getHashedActiveUserId,
+  partIsApprovalRequest,
+  stopChat,
+} from './utils';
+import {
+  AssistantGlobalStateProvider,
+  useAssistantGlobalState,
+} from './assistant-global-state';
+import type {
+  ActiveConnectionInfo,
+  GlobalState,
+} from './assistant-global-state';
+import { buildConversationInstructionsPrompt } from './prompts';
+import {
+  buildConnectionErrorPrompt,
+  buildContextPrompt,
+  buildDiagnoseSearchStagePrompt,
+  buildExplainPlanPrompt,
+  buildProactiveInsightsPrompt,
+  buildAnalyzeOutputPrompt,
+  buildDebugSearchErrorPrompt,
+  type DiagnoseSearchStageContext,
+  type EntryPointMessage,
+  type ProactiveInsightsContext,
+  type AnalyzeOutputContext,
+  type DebugSearchErrorContext,
+  TOOL_DENIAL_REASONS,
+} from './prompts';
+import { DocsProviderTransport } from './docs-provider-transport';
+import { Chat } from './@ai-sdk/react/chat-react';
+import { type UIMessage } from './@ai-sdk/react/use-chat';
 
 export const ASSISTANT_DRAWER_ID = 'compass-assistant-drawer';
 
@@ -147,12 +145,20 @@ export type AssistantMessage = UIMessage & {
     analyticsId?: string;
     /** The request ID associated with this message. */
     requestId?: string;
+    /** Names of the skills the server used for this response. */
+    skillsUsed?: string[];
     /** Tool call IDs that have already had their connection ID registered. */
     registeredToolCallIds?: string[];
   };
 };
 
-type AssistantContextType = Chat<AssistantMessage>;
+/**
+ * A chat with a `threadId` that identifies the conversation in requests to the
+ * assistant API and in telemetry. It is regenerated when the chat is cleared.
+ */
+export type ThreadedChat = Chat<AssistantMessage> & { threadId: string };
+
+type AssistantContextType = ThreadedChat;
 
 export const AssistantContext = createContext<AssistantContextType | null>(
   null
@@ -193,6 +199,7 @@ type AssistantActionsContextType = {
     options: SendOptions,
     callback: (options: {
       requestId: string;
+      threadId: string;
       connectionInfo?: BasicConnectionInfo;
     }) => void
   ) => Promise<void>;
@@ -315,7 +322,7 @@ function hasConnectionId(obj: unknown): obj is { connectionId: string } {
 export type AssistantState = Record<string, never>;
 
 type AssistantExtraArgs = {
-  chat: Chat<AssistantMessage>;
+  chat: ThreadedChat;
   atlasAiService: AtlasAiService;
   atlasAdminApi: AtlasAdminApiService;
   toolsController: ToolsController;
@@ -341,6 +348,7 @@ export function ensureOptInAndSendThunk(
   options: SendOptions,
   callback: (options: {
     requestId: string;
+    threadId: string;
     connectionInfo?: BasicConnectionInfo;
   }) => void,
   globalState: GlobalState
@@ -387,7 +395,7 @@ export function ensureOptInAndSendThunk(
 
     // Call the callback to indicate that the opt-in was successful. A good
     // place to do tracking.
-    callback({ requestId, connectionInfo });
+    callback({ requestId, connectionInfo, threadId: chat.threadId });
 
     const prefs = preferences.getPreferences();
 
@@ -502,6 +510,7 @@ export function ensureOptInAndSendThunk(
         'Assistant Response Generated',
         {
           request_id: requestId,
+          thread_id: chat.threadId,
         },
         connectionInfo
       );
@@ -517,6 +526,7 @@ export function ensureOptInAndSendThunk(
         {
           error_name: (err as Error).name,
           request_id: requestId,
+          thread_id: chat.threadId,
         },
         connectionInfo
       );
@@ -552,7 +562,7 @@ function handleEntryPoint<T>(
           },
         },
         {},
-        ({ requestId, connectionInfo }) => {
+        ({ requestId, connectionInfo, threadId }) => {
           openDrawer(ASSISTANT_DRAWER_ID);
 
           track(
@@ -560,6 +570,7 @@ function handleEntryPoint<T>(
             {
               source: entryPointName,
               request_id: requestId,
+              thread_id: threadId,
             },
             connectionInfo
           );
@@ -673,7 +684,7 @@ function activateAssistantPlugin(
     originForPrompt,
     appNameForPrompt,
   }: {
-    chat?: Chat<AssistantMessage>;
+    chat?: ThreadedChat;
     originForPrompt: string;
     appNameForPrompt: string;
     projectId?: string;
@@ -734,7 +745,7 @@ function activateAssistantPlugin(
 }
 
 // Getter thunk to access chat from extra args
-function getChat(): AssistantThunkAction<Chat<AssistantMessage>> {
+function getChat(): AssistantThunkAction<ThreadedChat> {
   return (_dispatch, _getState, { chat }) => chat;
 }
 
@@ -747,13 +758,14 @@ function getAtlasAdminApi(): AssistantThunkAction<AtlasAdminApiService> {
 const AssistantProviderInner: React.FunctionComponent<
   PropsWithChildren<{
     projectId?: string;
-    getChat: () => Chat<AssistantMessage>;
+    getChat: () => ThreadedChat;
     getAtlasAdminApi: () => AtlasAdminApiService;
     ensureOptInAndSend: (
       message: SendMessage,
       options: SendOptions,
       callback: (options: {
         requestId: string;
+        threadId: string;
         connectionInfo?: BasicConnectionInfo;
       }) => void,
       globalState: GlobalState
@@ -903,7 +915,7 @@ export const CompassAssistantProvider = registerCompassPlugin(
     }: PropsWithChildren<{
       appNameForPrompt: string;
       originForPrompt: string;
-      chat?: Chat<AssistantMessage>;
+      chat?: ThreadedChat;
       projectId?: string;
     }>) {
       return (
@@ -948,63 +960,69 @@ export function createDefaultChat({
   };
   getTools?: () => ToolSet;
   modelVersion?: string;
-}): Chat<AssistantMessage> {
+}): ThreadedChat {
   const initialBaseUrl = 'http://PLACEHOLDER_BASE_URL_TO_BE_REPLACED.invalid';
-  return new Chat<AssistantMessage>({
-    transport:
-      options?.transport ??
-      new DocsProviderTransport({
-        origin: originForPrompt,
-        getTools,
-        instructions: buildConversationInstructionsPrompt({
-          target: appNameForPrompt,
+  const chat: ThreadedChat = Object.assign(
+    new Chat<AssistantMessage>({
+      transport:
+        options?.transport ??
+        new DocsProviderTransport({
+          origin: originForPrompt,
+          getTools,
+          getThreadId: () => chat.threadId,
+          instructions: buildConversationInstructionsPrompt({
+            target: appNameForPrompt,
+          }),
+          model: createOpenAI({
+            baseURL: initialBaseUrl,
+            apiKey: '',
+            fetch(url, init) {
+              if (init?.body) {
+                // TODO: Temporary hack to transform developer role to system role
+                // before sending the request. Should be removed once our backend supports it.
+                const body = JSON.parse(init?.body as string);
+                body.input = body.input.map((message: any) => {
+                  if (message.role === 'developer') {
+                    return {
+                      ...message,
+                      role: 'system',
+                    };
+                  }
+                  return message;
+                });
+                init.body = JSON.stringify(body);
+              }
+              return globalThis.fetch(
+                // The `baseUrl` can be dynamically changed, but `createOpenAI`
+                // constructor doesn't allow us to change it after initial call.
+                // Instead we're going to update it every time the fetch call
+                // happens
+                String(url).replace(
+                  initialBaseUrl,
+                  atlasService.assistantApiEndpoint()
+                ),
+                init
+              );
+            },
+          }).responses(modelVersion),
         }),
-        model: createOpenAI({
-          baseURL: initialBaseUrl,
-          apiKey: '',
-          fetch(url, init) {
-            if (init?.body) {
-              // TODO: Temporary hack to transform developer role to system role
-              // before sending the request. Should be removed once our backend supports it.
-              const body = JSON.parse(init?.body as string);
-              body.input = body.input.map((message: any) => {
-                if (message.role === 'developer') {
-                  return {
-                    ...message,
-                    role: 'system',
-                  };
-                }
-                return message;
-              });
-              init.body = JSON.stringify(body);
-            }
-            return globalThis.fetch(
-              // The `baseUrl` can be dynamically changed, but `createOpenAI`
-              // constructor doesn't allow us to change it after initial call.
-              // Instead we're going to update it every time the fetch call
-              // happens
-              String(url).replace(
-                initialBaseUrl,
-                atlasService.assistantApiEndpoint()
-              ),
-              init
-            );
-          },
-        }).responses(modelVersion),
-      }),
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
-    onError: (err: Error) => {
-      logger.log.error(
-        logger.mongoLogId(1_001_000_370),
-        'Assistant',
-        'Failed to send a message',
-        { err }
-      );
-      track('Assistant Failed', {
-        error_name: err.name,
-      });
-    },
-  });
+      sendAutomaticallyWhen:
+        lastAssistantMessageIsCompleteWithApprovalResponses,
+      onError: (err: Error) => {
+        logger.log.error(
+          logger.mongoLogId(1_001_000_370),
+          'Assistant',
+          'Failed to send a message',
+          { err }
+        );
+        track('Assistant Failed', {
+          error_name: err.name,
+        });
+      },
+    }),
+    { threadId: new UUID().toString() }
+  );
+  return chat;
 }
 
 export function setToolsContext(

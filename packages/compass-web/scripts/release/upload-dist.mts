@@ -1,6 +1,6 @@
-import fs from 'fs';
-import path from 'path';
-import { brotliCompressSync } from 'zlib';
+import fs from 'node:fs';
+import path from 'node:path';
+import { brotliCompressSync } from 'node:zlib';
 import {
   DIST_DIR,
   DOWNLOADS_BUCKET,
@@ -15,6 +15,8 @@ if (!artifacts.length) {
 }
 
 const contentTypeForExt: Record<string, string> = {
+  //@ts-expect-error: typescript doesn't support setting proto to null
+  __proto__: null,
   '.mjs': 'text/javascript',
   '.txt': 'text/plain', // extracted third party license info
   '.ts': 'text/typescript', // type definitions

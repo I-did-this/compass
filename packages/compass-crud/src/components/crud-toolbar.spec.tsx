@@ -7,10 +7,10 @@ import {
   userEvent,
   waitFor,
 } from '@mongodb-js/testing-library-compass';
-import type { PreferencesAccess } from 'compass-preferences-model';
-import { createSandboxFromDefaultPreferences } from 'compass-preferences-model';
-import { CrudToolbar } from './crud-toolbar';
+import type { PreferencesAccess } from '@mongodb-js/compass-preferences-model';
+import { createSandboxFromDefaultPreferences } from '@mongodb-js/compass-preferences-model';
 import { renderWithQueryBar } from '../../test/render-with-query-bar';
+import { CrudToolbar } from './crud-toolbar';
 
 const noop = () => {
   /* noop */

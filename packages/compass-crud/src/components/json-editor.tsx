@@ -16,11 +16,11 @@ import {
   useSafeIntegerLinter,
 } from '@mongodb-js/compass-editor';
 import type { EditorRef } from '@mongodb-js/compass-editor';
+import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
 import type { CrudActions } from '../stores/crud-store';
 import { parseUpdateDocumentText } from '../stores/crud-store';
 import { useDocumentAutocompleter } from '../hooks/use-document-autocompleter';
 import { getSafeIntegerViolationMessage } from '../utils';
-import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
 import DocumentFind from './document-find';
 import type { DocumentFindRef } from './document-find';
 import { registerDocumentSearch } from '../utils/document-search-focus';

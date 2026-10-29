@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { usePreference } from 'compass-preferences-model/provider';
+import { usePreference } from '@mongodb-js/compass-preferences-model/provider';
 import { useLocalAppRegistry } from '@mongodb-js/compass-app-registry';
 import {
   ToolbarIconButton,

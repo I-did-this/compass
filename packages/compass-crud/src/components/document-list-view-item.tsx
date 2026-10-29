@@ -1,9 +1,16 @@
 import React, { useCallback } from 'react';
 import type HadronDocument from 'hadron-document';
-import { css, KeylineCard } from '@mongodb-js/compass-components';
+import {
+  css,
+  KeylineCard,
+  useMergeRefs,
+} from '@mongodb-js/compass-components';
+import {
+  useChangeQueryBarQuery,
+  useQueryBarQuery,
+} from '@mongodb-js/compass-query-bar';
 import Document, { type DocumentProps } from './document';
 import { useDocumentItemContextMenu } from './use-document-item-context-menu';
-import { useMergeRefs } from '@mongodb-js/compass-components';
 
 const keylineCardStyles = css({
   // NB: overflow is intentionally left `visible` here (rather than `hidden`)
@@ -12,10 +19,6 @@ const keylineCardStyles = css({
   overflow: 'visible',
   position: 'relative',
 });
-import {
-  useChangeQueryBarQuery,
-  useQueryBarQuery,
-} from '@mongodb-js/compass-query-bar';
 
 export type DocumentListViewItemProps = {
   doc: HadronDocument;

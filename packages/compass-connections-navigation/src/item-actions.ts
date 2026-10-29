@@ -1,6 +1,5 @@
-import type { ItemAction } from '@mongodb-js/compass-components';
+import type { ItemAction, ItemSeparator } from '@mongodb-js/compass-components';
 import { type ConnectionInfo } from '@mongodb-js/connection-info';
-import { type ItemSeparator } from '@mongodb-js/compass-components';
 import { type NotConnectedConnectionStatus } from './tree-data';
 import { ConnectButton } from './connect-button';
 import type { Actions } from './constants';
@@ -24,14 +23,12 @@ export const commonConnectionItemActions = ({
 }): NavigationItemAction[] => {
   const isAtlas = !!connectionInfo.atlasMetadata;
   return stripNullActions([
-    isAtlas
-      ? null
-      : {
-          action: 'edit-connection',
-          label: 'Edit connection',
-          icon: 'Edit',
-          disabledDescription: 'Cannot edit an active connection',
-        },
+    {
+      action: 'edit-connection',
+      label: 'Edit connection',
+      icon: 'Edit',
+      disabledDescription: 'Cannot edit an active connection',
+    },
     isAtlas
       ? {
           action: 'show-connect-via-modal',

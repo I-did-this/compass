@@ -1,5 +1,5 @@
 import React from 'react';
-import { MongoDBInstance } from 'mongodb-instance-model';
+import { MongoDBInstance } from '@mongodb-js/mongodb-instance-model';
 import type { RenderWithConnectionsResult } from '@mongodb-js/testing-library-compass';
 import {
   render,
@@ -9,12 +9,12 @@ import {
   userEvent,
 } from '@mongodb-js/testing-library-compass';
 import { expect } from 'chai';
-import { CollectionsWorkspaceTab } from './';
 import Sinon from 'sinon';
 import {
   type PreferencesAccess,
   createSandboxFromDefaultPreferences,
-} from 'compass-preferences-model';
+} from '@mongodb-js/compass-preferences-model';
+import { CollectionsWorkspaceTab } from './';
 
 describe('Collections [Plugin]', function () {
   let dataService: any;

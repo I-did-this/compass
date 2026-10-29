@@ -1,17 +1,9 @@
 import React, { useCallback, useEffect } from 'react';
 import { connect } from 'react-redux';
-import { type CollectionState, selectTab } from '../modules/collection-tab';
 import { css, ErrorBoundary, TabNavBar } from '@mongodb-js/compass-components';
-import CollectionHeader from './collection-header';
-import toNS from 'mongodb-ns';
+import toNS from '@mongodb-js/mongodb-ns';
 import { useLogger } from '@mongodb-js/compass-logging/provider';
-import {
-  useCollectionQueryBar,
-  useCollectionScopedModals,
-  useCollectionSubTabs,
-} from './collection-tab-provider';
-import type { CollectionTabOptions } from '../stores/collection-tab';
-import type { CollectionMetadata } from 'mongodb-collection-model';
+import type { CollectionMetadata } from '@mongodb-js/mongodb-collection-model';
 import type { CollectionSubtab } from '@mongodb-js/workspace-info';
 import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
 import {
@@ -19,14 +11,22 @@ import {
   useConnectionInfoRef,
   useConnectionSupports,
 } from '@mongodb-js/compass-connections/provider';
-import { usePreference } from 'compass-preferences-model/provider';
+import { usePreference } from '@mongodb-js/compass-preferences-model/provider';
 import { useApplicationMenu } from '@mongodb-js/compass-electron-menu';
 import {
   useGlobalAppRegistry,
   useLocalAppRegistry,
 } from '@mongodb-js/compass-app-registry';
 import { useSyncAssistantGlobalState } from '@mongodb-js/compass-assistant';
+import type { CollectionTabOptions } from '../stores/collection-tab';
+import { type CollectionState, selectTab } from '../modules/collection-tab';
 import { isMockDataGeneratorEligible as isMockDataGeneratorEligiblePredicate } from '../mock-data-generator-eligibility';
+import {
+  useCollectionQueryBar,
+  useCollectionScopedModals,
+  useCollectionSubTabs,
+} from './collection-tab-provider';
+import CollectionHeader from './collection-header';
 
 type CollectionSubtabTrackingId =
   Lowercase<CollectionSubtab> extends infer U

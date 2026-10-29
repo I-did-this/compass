@@ -164,12 +164,38 @@ export const FEATURE_FLAG_DEFINITIONS = [
     },
   },
 
+  /*
+   * Feature flag for VectorX private preview support in the
+   * vector search index schema.
+   */
+  {
+    name: 'enableVectorXPrivatePreview',
+    stage: 'development',
+    atlasCloudFeatureScope: 'group',
+    description: {
+      short:
+        'Enable VectorX support for vector search indexes (private preview)',
+    },
+  },
+
   {
     name: 'enableCompassWebSettings',
     stage: 'development',
     atlasCloudFeatureScope: 'group',
     description: {
       short: 'Enable settings in compass web',
+    },
+  },
+
+  /*
+   * Feature flag for connection folders in the sidebar.
+   */
+  {
+    name: 'enableConnectionFolders',
+    stage: 'development',
+    atlasCloudFeatureScope: 'group',
+    description: {
+      short: 'Enable connection folders in the sidebar',
     },
   },
 ] as const satisfies ReadonlyArray<FeatureFlagDefinition>;

@@ -11,18 +11,20 @@ import {
   PerformanceSignals,
 } from '@mongodb-js/compass-components';
 import { debounce, find } from 'lodash';
-import { withPreferences } from 'compass-preferences-model/provider';
+import { withPreferences } from '@mongodb-js/compass-preferences-model/provider';
 import type {
   ArraySchemaType,
   DocumentSchemaType,
   SchemaField,
   SchemaType,
 } from '@mongodb-js/mongodb-schema';
+import {
+  useQueryBarQuery,
+  useChangeQueryBarQuery,
+} from '@mongodb-js/compass-query-bar';
+import detectCoordinates from '../modules/detect-coordinates';
 import { FieldType, sortTypes } from './type';
 import Minichart from './minichart';
-import detectCoordinates from '../modules/detect-coordinates';
-import { useQueryBarQuery } from '@mongodb-js/compass-query-bar';
-import { useChangeQueryBarQuery } from '@mongodb-js/compass-query-bar';
 
 const toggleCollapseButtonIconStyles = css({
   color: palette.gray.dark2,

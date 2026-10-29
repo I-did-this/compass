@@ -16,8 +16,6 @@ import { WelcomeModal } from '@mongodb-js/compass-welcome';
 import { type ConnectionStorage } from '@mongodb-js/connection-storage/provider';
 import { AppRegistryProvider } from '@mongodb-js/compass-app-registry';
 import React from 'react';
-import Workspace from './workspace';
-import { getExtraConnectionData } from '../utils/telemetry';
 import { CompassInstanceStorePlugin } from '@mongodb-js/compass-app-stores';
 import FieldStorePlugin from '@mongodb-js/compass-field-store';
 import { AtlasAuthPlugin } from '@mongodb-js/atlas-service/renderer';
@@ -26,9 +24,13 @@ import { ToolsControllerProvider } from '@mongodb-js/compass-generative-ai/provi
 import { ConnectionStorageProvider } from '@mongodb-js/connection-storage/provider';
 import { ConnectionImportExportProvider } from '@mongodb-js/compass-connection-import-export';
 import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
-import { usePreferences } from 'compass-preferences-model/provider';
-import { CompassAssistantProvider } from '@mongodb-js/compass-assistant';
-import { APP_NAMES_FOR_PROMPT } from '@mongodb-js/compass-assistant';
+import { usePreferences } from '@mongodb-js/compass-preferences-model/provider';
+import {
+  CompassAssistantProvider,
+  APP_NAMES_FOR_PROMPT,
+} from '@mongodb-js/compass-assistant';
+import { getExtraConnectionData } from '../utils/telemetry';
+import Workspace from './workspace';
 
 resetGlobalCSS();
 

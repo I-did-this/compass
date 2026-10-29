@@ -17,13 +17,13 @@ import {
   Tooltip,
 } from '@mongodb-js/compass-components';
 import type { Signal } from '@mongodb-js/compass-components';
+import { usePreference } from '@mongodb-js/compass-preferences-model/provider';
+import { QueryBar } from '@mongodb-js/compass-query-bar';
+import { useConnectionInfoRef } from '@mongodb-js/compass-connections/provider';
 import { ViewSwitcher } from './view-switcher';
 import { type DocumentView } from '../stores/crud-store';
 import { AddDataActions } from './add-data-actions';
-import { usePreference } from 'compass-preferences-model/provider';
 import { BulkActions } from './bulk-actions';
-import { QueryBar } from '@mongodb-js/compass-query-bar';
-import { useConnectionInfoRef } from '@mongodb-js/compass-connections/provider';
 import {
   ToolbarIconButton,
   toolbarButtonGroupStyles,

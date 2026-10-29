@@ -12,9 +12,9 @@ import {
   useDarkMode,
 } from '@mongodb-js/compass-components';
 
-import { documentStyles, documentContentStyles } from './readonly-document';
 import { getInsightsForDocument } from '../utils';
 import type { CrudActions } from '../stores/crud-store';
+import { documentStyles, documentContentStyles } from './readonly-document';
 import DocumentFind from './document-find';
 import type { DocumentFindRef, DocumentSearchTarget } from './document-find';
 import { registerDocumentSearch } from '../utils/document-search-focus';

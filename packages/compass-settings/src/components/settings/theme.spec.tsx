@@ -10,9 +10,9 @@ import { spy } from 'sinon';
 import { expect } from 'chai';
 
 import { Provider } from 'react-redux';
-import { ThemeSettings } from './theme';
 import configureStore from '../../../test/configure-store';
 import { fetchSettings } from '../../stores/settings';
+import { ThemeSettings } from './theme';
 
 describe('ThemeSettings', function () {
   let container: HTMLElement;
@@ -59,7 +59,7 @@ describe('ThemeSettings', function () {
 
   it('changes shellFollowsCompassTheme value when option is clicked', function () {
     const checkbox = within(container).getByRole('checkbox', {
-      name: /Use Compass Theme in MongoDB Shell/,
+      name: /Use Current Theme in MongoDB Shell/,
     }) as HTMLInputElement;
     expect(checkbox.checked).to.be.false;
     userEvent.click(checkbox, undefined, {

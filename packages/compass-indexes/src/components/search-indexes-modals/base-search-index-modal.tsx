@@ -23,25 +23,19 @@ import {
   Tooltip,
   useSyncStateOnPropChange,
 } from '@mongodb-js/compass-components';
-import type { Annotation } from '@mongodb-js/compass-editor';
+import type { Annotation, EditorRef } from '@mongodb-js/compass-editor';
 import {
   CodemirrorMultilineEditor,
   createSearchIndexAutocompleter,
 } from '@mongodb-js/compass-editor';
-import type { EditorRef } from '@mongodb-js/compass-editor';
 import type { Document } from 'mongodb';
-import { SearchIndexTemplateDropdown } from '../search-index-template-dropdown';
-import {
-  VectorSearchIndexTemplateDropdown,
-  type VectorIndexTemplateChoice,
-} from '../search-index-template-dropdown/vector-search-index-template-dropdown';
 import {
   ATLAS_SEARCH_TEMPLATES,
   ATLAS_VECTOR_SEARCH_AUTO_EMBED_TEMPLATE,
   ATLAS_VECTOR_SEARCH_TEMPLATE,
   type SearchTemplate,
 } from '@mongodb-js/mongodb-constants';
-import { usePreferences } from 'compass-preferences-model/provider';
+import { usePreferences } from '@mongodb-js/compass-preferences-model/provider';
 import { useAutocompleteFields } from '@mongodb-js/compass-field-store';
 import {
   useTrackOnChange,
@@ -49,6 +43,11 @@ import {
 } from '@mongodb-js/compass-telemetry/provider';
 import { useConnectionInfoRef } from '@mongodb-js/compass-connections/provider';
 import { isEqual } from 'lodash';
+import {
+  VectorSearchIndexTemplateDropdown,
+  type VectorIndexTemplateChoice,
+} from '../search-index-template-dropdown/vector-search-index-template-dropdown';
+import { SearchIndexTemplateDropdown } from '../search-index-template-dropdown';
 import { parseShellBSON } from '../../utils/parse-shell-bson';
 import { isAutoEmbedIndex } from '../../utils/is-auto-embed-index';
 import { AUTO_EMBED_EDIT_COST_WARNING } from '../../utils/auto-embed-messaging';

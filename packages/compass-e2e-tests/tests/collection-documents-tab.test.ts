@@ -1,6 +1,8 @@
 import chai from 'chai';
 import clipboard from 'clipboardy';
 import { EJSON } from 'bson';
+import type { ChainablePromiseElement } from 'webdriverio';
+import type { LogEntry } from '@mongodb-js/compass-test-server';
 import type { CompassBrowser } from '../helpers/compass-browser.ts';
 import {
   deleteCommonVariedProperties,
@@ -25,10 +27,8 @@ import {
   isTestingWebAtlasCloud,
   context as testRunnerContext,
 } from '../helpers/test-runner-context.ts';
-import type { ChainablePromiseElement } from 'webdriverio';
 import { tryToInsertDocument } from '../helpers/commands/try-to-insert-document.ts';
 import { allowServerWarnings } from '../helpers/test-runner-global-fixtures.ts';
-import type { LogEntry } from '@mongodb-js/compass-test-server';
 
 const { expect } = chai;
 
@@ -1291,7 +1291,28 @@ FindIterable<Document> result = collection.find(filter)
     await browser.clickVisible(Selectors.InsertDocumentOption);
     await browser.waitForOpenModal(Selectors.InsertDialog);
 
+    const editorTextBeforeViewSwitch = await browser.getCodemirrorEditorText(
+      Selectors.InsertDocumentEditor
+    );
+
     await browser.clickVisible(Selectors.InsertDialogJSONView);
+
+    // Switching views is applied asynchronously and replaces the editor content
+    // with the document re-serialized in the new syntax. Typing before that
+    // lands gets overwritten when the switch arrives.
+    await browser.waitUntil(
+      async () => {
+        const text = await browser.getCodemirrorEditorText(
+          Selectors.InsertDocumentEditor
+        );
+        return text !== editorTextBeforeViewSwitch;
+      },
+      {
+        timeoutMsg:
+          'Expected the insert dialog to re-serialize the document for the JSON view',
+      }
+    );
+
     await browser.setCodemirrorEditorValue(
       Selectors.InsertDocumentEditor,
       `{ "i": ${Number.MAX_SAFE_INTEGER + 1} }`

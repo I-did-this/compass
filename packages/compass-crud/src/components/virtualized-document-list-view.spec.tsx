@@ -10,8 +10,8 @@ import {
 } from '@mongodb-js/testing-library-compass';
 import sinon from 'sinon';
 import { type VirtualListRef } from '@mongodb-js/compass-components';
-import type { PreferencesAccess } from 'compass-preferences-model';
-import { createSandboxFromDefaultPreferences } from 'compass-preferences-model';
+import type { PreferencesAccess } from '@mongodb-js/compass-preferences-model';
+import { createSandboxFromDefaultPreferences } from '@mongodb-js/compass-preferences-model';
 import { renderWithQueryBar } from '../../test/render-with-query-bar';
 
 import VirtualizedDocumentListView from './virtualized-document-list-view';

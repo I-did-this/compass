@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
-import { AtlasAiService } from './atlas-ai-service';
-import { ToolsController } from './tools-controller';
 import {
   preferencesLocator,
   usePreference,
-} from 'compass-preferences-model/provider';
+} from '@mongodb-js/compass-preferences-model/provider';
 import { useLogger } from '@mongodb-js/compass-logging/provider';
 import { atlasServiceLocator } from '@mongodb-js/atlas-service/provider';
 import {
@@ -13,6 +11,8 @@ import {
 } from '@mongodb-js/compass-app-registry';
 import { atlasAdminApiServiceLocator } from '@mongodb-js/atlas-admin-api/provider';
 import { telemetryLocator } from '@mongodb-js/compass-telemetry/provider';
+import { ToolsController } from './tools-controller';
+import { AtlasAiService } from './atlas-ai-service';
 
 const AtlasAiServiceContext = createContext<AtlasAiService | null>(null);
 
@@ -137,12 +137,6 @@ export {
   AtlasAiServiceApiResponseParseError,
 } from './atlas-ai-errors';
 
-export type {
-  MockDataSchemaRequest,
-  MockDataSchemaRawField,
-  MockDataSchemaToolOutput,
-} from './atlas-ai-service';
-
-export { mockDataSchemaToolSchema } from './atlas-ai-service';
+export type { MockDataSchemaRequest } from './atlas-ai-service';
 
 export type { AtlasConnectionDebugResult } from './tools/debug-connection';

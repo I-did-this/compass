@@ -1,6 +1,6 @@
-import util from 'util';
-import type { DataService } from 'mongodb-data-service';
-import { connect } from 'mongodb-data-service';
+import util from 'node:util';
+import type { EventEmitter } from 'node:events';
+import { once } from 'node:events';
 import AppRegistry, {
   createActivateHelpers,
 } from '@mongodb-js/compass-app-registry';
@@ -9,17 +9,31 @@ import HadronDocument, {
   Element,
   type DocumentEventsType,
 } from 'hadron-document';
-import { MongoDBInstance } from 'mongodb-instance-model';
-import type { EventEmitter } from 'events';
-import { once } from 'events';
+import { MongoDBInstance } from '@mongodb-js/mongodb-instance-model';
+import { connect } from 'mongodb-data-service';
+import type { DataService } from 'mongodb-data-service';
 import sinon from 'sinon';
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import type {
-  CrudStore,
-  CrudStoreOptions,
-  DocumentsPluginServices,
-} from './crud-store';
+import { Int32, Long, Double, Decimal128, ObjectId, Binary } from 'bson';
+import { mochaTestServer } from '@mongodb-js/compass-test-server';
+import {
+  createElectronRecentQueryStorage,
+  createElectronFavoriteQueryStorage,
+} from '@mongodb-js/my-queries-storage';
+import { satisfies } from 'semver';
+import type { PreferencesAccess } from '@mongodb-js/compass-preferences-model';
+import { createSandboxFromDefaultPreferences } from '@mongodb-js/compass-preferences-model';
+
+import { createNoopLogger } from '@mongodb-js/compass-logging/provider';
+import type { FieldStoreService } from '@mongodb-js/compass-field-store';
+import {
+  type ConnectionInfoRef,
+  ConnectionScopedAppRegistryImpl,
+} from '@mongodb-js/compass-connections/provider';
+import { createNoopTrack } from '@mongodb-js/compass-telemetry/provider';
+import { createDefaultConnectionInfo } from '@mongodb-js/testing-library-compass';
+import type { TableHeaderType } from './grid-store';
 import {
   findAndModifyWithFLEFallback,
   fetchDocuments,
@@ -29,26 +43,12 @@ import {
   parseInsertDocument,
   parseInsertDocumentArray,
 } from './crud-store';
-import type { InsertDocumentView } from './crud-store';
-import { Int32, Long, Double, Decimal128, ObjectId, Binary } from 'bson';
-import { mochaTestServer } from '@mongodb-js/compass-test-server';
-import {
-  createElectronRecentQueryStorage,
-  createElectronFavoriteQueryStorage,
-} from '@mongodb-js/my-queries-storage';
-import { satisfies } from 'semver';
-import type { PreferencesAccess } from 'compass-preferences-model';
-import { createSandboxFromDefaultPreferences } from 'compass-preferences-model';
-
-import { createNoopLogger } from '@mongodb-js/compass-logging/provider';
-import type { FieldStoreService } from '@mongodb-js/compass-field-store';
-import {
-  type ConnectionInfoRef,
-  ConnectionScopedAppRegistryImpl,
-} from '@mongodb-js/compass-connections/provider';
-import type { TableHeaderType } from './grid-store';
-import { createNoopTrack } from '@mongodb-js/compass-telemetry/provider';
-import { createDefaultConnectionInfo } from '@mongodb-js/testing-library-compass';
+import type {
+  CrudStore,
+  CrudStoreOptions,
+  DocumentsPluginServices,
+  InsertDocumentView,
+} from './crud-store';
 
 const TEST_CONNECTION_INFO = createDefaultConnectionInfo();
 
