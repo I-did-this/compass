@@ -1,7 +1,7 @@
 import type { Action, Reducer } from 'redux';
 import type { Stage } from '@mongodb-js/explain-plan-helper';
 import { ExplainPlan } from '@mongodb-js/explain-plan-helper';
-import { cancellableWait } from '@mongodb-js/compass-utils';
+import { cancellableWait } from '@mongodb-js/compass-events';
 import { getStageOperator, isOutputStage } from '../utils/stage';
 import { isAction } from '../utils/is-action';
 import type { NewPipelineConfirmedAction } from './is-new-pipeline-confirm';
@@ -20,7 +20,7 @@ const FETCH_EXPLAIN_PLAN_SUCCESS =
   'compass-aggregations/FETCH_EXPLAIN_PLAN_SUCCESS' as const;
 interface FetchExplainPlanSuccessAction {
   type: typeof FETCH_EXPLAIN_PLAN_SUCCESS;
-  explainPlan: ExplainPlan;
+  isCollectionScan: boolean;
 }
 export type InsightsAction = FetchExplainPlanSuccessAction;
 
@@ -35,7 +35,7 @@ const reducer: Reducer<{ isCollectionScan: boolean }, Action> = (
   ) {
     return {
       ...state,
-      isCollectionScan: action.explainPlan.isCollectionScan,
+      isCollectionScan: action.isCollectionScan,
     };
   }
   if (
@@ -72,13 +72,12 @@ export const fetchExplainForPipeline = (): PipelineBuilderThunkAction<
 > => {
   return async (dispatch, getState, { pipelineBuilder }) => {
     const { id, namespace, dataService, maxTimeMS } = getState();
-    const abortSignal = getAbortSignal(id);
+    const signal = getAbortSignal(id);
     try {
       // Debounce action to allow for user typing to stop
-      await cancellableWait(300, abortSignal);
-      const pipeline = getPipelineFromBuilderState(
-        getState(),
-        pipelineBuilder
+      await cancellableWait(300, undefined, { signal });
+      const pipeline = (
+        await getPipelineFromBuilderState(getState(), pipelineBuilder)
       ).filter((stage) => {
         // Getting explain plan for a pipeline with an out / merge stage can
         // cause data corruption issues in non-genuine MongoDB servers, for
@@ -95,11 +94,14 @@ export const fetchExplainForPipeline = (): PipelineBuilderThunkAction<
         {
           explainVerbosity: 'queryPlanner',
           maxTimeMS: maxTimeMS ?? undefined,
-          abortSignal,
+          abortSignal: signal,
         }
       );
       const explainPlan = new ExplainPlan(rawExplainPlan as Stage);
-      dispatch({ type: FETCH_EXPLAIN_PLAN_SUCCESS, explainPlan });
+      dispatch({
+        type: FETCH_EXPLAIN_PLAN_SUCCESS,
+        isCollectionScan: explainPlan.isCollectionScan,
+      });
       ExplainFetchAbortControllerMap.delete(id);
     } catch {
       // We are only fetching this to get information about index usage for

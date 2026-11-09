@@ -1,5 +1,5 @@
 import type { AggregateOptions, Document } from 'mongodb';
-import { cancellableWait } from '@mongodb-js/compass-utils';
+import { abortable, cancellableWait } from '@mongodb-js/compass-events';
 import {
   FULL_SCAN_STAGES,
   REQUIRED_AS_FIRST_STAGE,
@@ -95,22 +95,26 @@ export class PipelinePreviewManager {
   async getPreviewForStage(
     idx: number,
     namespace: string,
-    pipeline: Document[],
-    {
-      sampleSize,
-      previewSize,
-      totalDocumentCount,
-      ...options
-    }: PreviewOptions = {},
+    getPipeline: () => Promise<Document[]>,
+    getPreviewOptions: () => Promise<PreviewOptions>,
     force = false
   ): Promise<Document[]> {
     this.queue.get(idx)?.abort();
     const controller = new AbortController();
     this.queue.set(idx, controller);
+    // Registered before the pipeline and options (collation) resolve so that
+    // cancelling while they are still parsing aborts this request.
+    const [
+      pipeline,
+      { sampleSize, previewSize, totalDocumentCount, ...options },
+    ] = await abortable(Promise.all([getPipeline(), getPreviewOptions()]), {
+      signal: controller.signal,
+    });
     if (!force) {
       await cancellableWait(
         options.debounceMs ?? DEFAULT_PREVIEW_DEBOUNCE_MS,
-        controller.signal
+        undefined,
+        controller
       );
     }
     this.lastPipeline.set(idx, pipeline);

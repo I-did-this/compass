@@ -7,7 +7,7 @@ import {
   userEvent,
   waitFor,
 } from '@mongodb-js/testing-library-compass';
-import HadronDocument from 'hadron-document';
+import HadronDocument from '@mongodb-js/hadron-document';
 import { setCodemirrorEditorValue } from '@mongodb-js/compass-editor';
 import JSONEditor from './json-editor';
 
