@@ -968,6 +968,39 @@ describe('store', function () {
       }
     );
 
+    context('when the active query has a projection', function () {
+      const doc = { _id: 'testing', email: 'old@test.com' };
+      const hadronDoc = new HadronDocument(doc);
+      let stub: sinon.SinonStub;
+
+      beforeEach(function () {
+        store.state.docs = [hadronDoc];
+        mockQueryBar.getLastAppliedQuery.returns({ project: { email: 1 } });
+        hadronDoc.get('email')?.edit('new@test.com');
+        stub = sinon
+          .stub(dataService, 'findOneAndUpdate')
+          .resolves({ _id: 'testing', email: 'new@test.com' });
+      });
+
+      afterEach(function () {
+        mockQueryBar.getLastAppliedQuery.returns({});
+      });
+
+      it('passes the projection to findOneAndUpdate and updates state.docs with the projected result', async function () {
+        await store.updateDocument(hadronDoc);
+
+        expect(stub.getCall(0).args[3]).to.deep.equal({
+          returnDocument: 'after',
+          promoteValues: false,
+          projection: { email: 1 },
+        });
+        expect(store.state.docs[0].generateObject()).to.deep.equal({
+          _id: 'testing',
+          email: 'new@test.com',
+        });
+      });
+    });
+
     context('when passed an invalid document', function () {
       it('should emit an error to the state', function (done) {
         const doc = { _id: 'testing', name: 'Beach Sand' };
@@ -1235,6 +1268,38 @@ describe('store', function () {
         void store.replaceDocument(hadronDoc);
 
         await listener;
+      });
+    });
+
+    context('when the active query has a projection', function () {
+      const doc = { _id: 'testing', email: 'old@test.com' };
+      const hadronDoc = new HadronDocument(doc);
+      let stub: sinon.SinonStub;
+
+      beforeEach(function () {
+        store.state.docs = [hadronDoc];
+        mockQueryBar.getLastAppliedQuery.returns({ project: { email: 1 } });
+        stub = sinon
+          .stub(dataService, 'findOneAndReplace')
+          .resolves({ _id: 'testing', email: 'replaced@test.com' });
+      });
+
+      afterEach(function () {
+        mockQueryBar.getLastAppliedQuery.returns({});
+      });
+
+      it('passes the projection to findOneAndReplace and updates state.docs with the projected result', async function () {
+        await store.replaceDocument(hadronDoc);
+
+        expect(stub.getCall(0).args[3]).to.deep.equal({
+          returnDocument: 'after',
+          promoteValues: false,
+          projection: { email: 1 },
+        });
+        expect(store.state.docs[0].generateObject()).to.deep.equal({
+          _id: 'testing',
+          email: 'replaced@test.com',
+        });
       });
     });
 
@@ -2649,6 +2714,48 @@ describe('store', function () {
       expect(findOneAndReplaceFake.firstCall.args[3]).to.deep.equal({
         returnDocument: 'after',
         promoteValues: false,
+      });
+    });
+
+    it('passes projection to findOneAndUpdate if provided', async function () {
+      findFake.callsFake(() => Promise.resolve([]));
+      findOneAndReplaceFake.resolves({});
+      findOneAndUpdateFake.resolves(updatedDocument);
+      const [error, d] = await findAndModifyWithFLEFallback(
+        dataServiceStub,
+        'compass-crud.test',
+        { _id: 1234 },
+        { name: 'document_12345' },
+        'update',
+        { projection: { name: 1 } }
+      );
+      expect(error).to.equal(undefined);
+      expect(d).to.equal(updatedDocument);
+      expect(findOneAndUpdateFake.firstCall.args[3]).to.deep.equal({
+        returnDocument: 'after',
+        promoteValues: false,
+        projection: { name: 1 },
+      });
+    });
+
+    it('passes projection to fallback find if provided', async function () {
+      const err = new Error('ShardKeyNotFound');
+      (err as any).codeName = 'ShardKeyNotFound';
+      findFake.callsFake(() => Promise.resolve([updatedDocument]));
+      findOneAndUpdateFake.rejects(err);
+      const [error, d] = await findAndModifyWithFLEFallback(
+        dataServiceStub,
+        'compass-crud.test',
+        { _id: 1234 },
+        { name: 'document_12345' },
+        'update',
+        { projection: { name: 1 } }
+      );
+      expect(error).to.equal(undefined);
+      expect(d).to.equal(updatedDocument);
+      expect(findFake.firstCall.args[2]).to.deep.equal({
+        promoteValues: false,
+        projection: { name: 1 },
       });
     });
 

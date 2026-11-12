@@ -777,12 +777,15 @@ class CrudStoreImpl
         // _verifyUpdateAllowed emitted update-error
         return;
       }
+      const queryBarQuery = this.queryBar?.getLastAppliedQuery?.('crud');
+      const projection = queryBarQuery?.project;
       const [error, d] = await findAndModifyWithFLEFallback(
         this.dataService,
         this.state.ns,
         query,
         updateDoc,
-        'update'
+        'update',
+        projection && !isEmpty(projection) ? { projection } : undefined
       );
 
       if (error) {
@@ -800,7 +803,11 @@ class CrudStoreImpl
         const newDocs = this.state.docs
           ? [...this.state.docs]
           : this.state.docs;
-        newDocs?.splice(index, 1, new HadronDocument(d));
+        const newDoc = new HadronDocument(d);
+        if (this.state.allDocumentsExpanded) {
+          newDoc.expand();
+        }
+        newDocs?.splice(index, 1, newDoc);
         this.setState({
           docs: newDocs,
         });
@@ -883,12 +890,15 @@ class CrudStoreImpl
       );
       this.logger.debug('Performing findOneAndReplace', { query, object });
 
+      const queryBarQuery = this.queryBar?.getLastAppliedQuery?.('crud');
+      const projection = queryBarQuery?.project;
       const [error, d] = await findAndModifyWithFLEFallback(
         this.dataService,
         this.state.ns,
         query,
         object,
-        'replace'
+        'replace',
+        projection && !isEmpty(projection) ? { projection } : undefined
       );
       if (error) {
         doc.onUpdateError(error as Error);
@@ -898,7 +908,11 @@ class CrudStoreImpl
         const newDocs = this.state.docs
           ? [...this.state.docs]
           : this.state.docs;
-        newDocs?.splice(index, 1, new HadronDocument(d));
+        const newDoc = new HadronDocument(d);
+        if (this.state.allDocumentsExpanded) {
+          newDoc.expand();
+        }
+        newDocs?.splice(index, 1, newDoc);
         this.setState({
           docs: newDocs,
         });
@@ -2501,20 +2515,24 @@ export async function findAndModifyWithFLEFallback(
   ns: string,
   query: BSONObject,
   object: { $set?: BSONObject; $unset?: BSONObject } | BSONObject | BSONArray,
-  modificationType: 'update' | 'replace'
+  modificationType: 'update' | 'replace',
+  options?: { projection?: BSONObject }
 ): Promise<ErrorOrResult> {
   let error: (Error & { codeName?: string; code?: any }) | undefined;
 
-  const options = {
-    returnDocument: 'after',
+  const findOneOptions = {
+    returnDocument: 'after' as const,
     promoteValues: false,
-  } as const;
+    ...(options?.projection && !isEmpty(options.projection)
+      ? { projection: options.projection }
+      : {}),
+  };
   try {
     return [
       undefined,
       await (modificationType === 'update'
-        ? ds.findOneAndUpdate(ns, query, object, options)
-        : ds.findOneAndReplace(ns, query, object, options)),
+        ? ds.findOneAndUpdate(ns, query, object, findOneOptions)
+        : ds.findOneAndReplace(ns, query, object, findOneOptions)),
     ] as ErrorOrResult;
   } catch (e) {
     error = e as Error;
@@ -2540,7 +2558,12 @@ export async function findAndModifyWithFLEFallback(
       const docs = await ds.find(
         ns,
         { _id: query._id as any },
-        { promoteValues: false }
+        {
+          promoteValues: false,
+          ...(options?.projection && !isEmpty(options.projection)
+            ? { projection: options.projection }
+            : {}),
+        }
       );
       return [undefined, docs[0]] as ErrorOrResult;
     } catch {
